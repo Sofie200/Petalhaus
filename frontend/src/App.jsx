@@ -1,5 +1,6 @@
 import './App.css'
 import { BrowserRouter, Routes, Route } from "react-router-dom";
+import { useState, useEffect } from 'react';
 import { ShoppingCartProvider } from './contexts/ShoppingCart';
 import Footer from './components/Footer'
 import Header from './components/Header'
@@ -16,6 +17,19 @@ import Unauthorized from './pages/Unauthorized'
 import ProtectedRoute from './components/admin/ProtectedRoute';
 
 function App() {
+	const [rates, setRates] = useState(0);
+	const API_URL = import.meta.env.VITE_API_URL;
+
+
+	useEffect(() => {
+		fetch(`${API_URL}/currency/rates`)
+			.then(response => response.json())
+			.then((data) => {
+				console.log("hej");
+				console.log(data)
+				setRates(data.rates)
+			})
+	}, []);
 
 	return (
 		<ShoppingCartProvider>
