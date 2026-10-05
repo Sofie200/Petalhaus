@@ -1,9 +1,11 @@
 import { useShoppingCart } from "../contexts/ShoppingCart";
+import { useCurrency } from "../contexts/CurrencyContext";
 import UserDetails from "../components/UserDetails"
 
 export default function OrderItemsView({handleCheckout}){
 
     const { cart } = useShoppingCart();
+    const { formatPrice } = useCurrency();
 
     const total = cart.reduce((sum, product) => {
         const price = product.price - product.discount;
@@ -36,11 +38,11 @@ export default function OrderItemsView({handleCheckout}){
                                     {product.discount > 0 ? (
                                         <>
                                             <span className="discounted">
-                                                {product.price - product.discount} kr
+                                                {formatPrice(product.price - product.discount)}
                                             </span>
                                         </>
                                     ) : (
-                                        <span>{Math.round(product.price)} kr</span>
+                                            <span>{formatPrice(Math.round(product.price))}</span>
                                     )}
 
                                 </p>
@@ -50,7 +52,7 @@ export default function OrderItemsView({handleCheckout}){
                     <tr>
                         <td className="total-row nomob"></td>
                         <td className="total-row" colSpan={3} align="right">
-                            <strong>Totalt: {total} kr</strong>
+                            <strong>Totalt: {formatPrice(total)}</strong>
 
                         </td>
                     </tr>

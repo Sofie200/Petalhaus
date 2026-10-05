@@ -1,16 +1,18 @@
 import { useShoppingCart } from "../contexts/ShoppingCart";
 import { Link } from "react-router-dom"
 import { useAuth } from "../hooks/useAuth";
+import { useCurrency } from "../contexts/CurrencyContext";
 
 const ShoppingCartView = () => {
 
     const { cart, removeFromCart } = useShoppingCart();
     const { user } = useAuth();
+    const { formatPrice } = useCurrency();
 
     const total = cart.reduce((sum, product) => {
-        const price = product.price - product.discount;
-        return sum + price * product.quantity;
-    }, 0);
+        const price = product.price - product.discount
+        return sum + price * product.quantity
+    }, 0)
 
     return (
 
@@ -42,11 +44,11 @@ const ShoppingCartView = () => {
                                         {product.discount > 0 ? (
                                             <>
                                                 <span className="discounted">
-                                                    {product.price - product.discount} kr
+                                                    {formatPrice(product.price - product.discount)}
                                                 </span>
                                             </>
                                         ) : (
-                                            <span>{Math.round(product.price)} kr</span>
+                                                <span>{formatPrice(Math.round(product.price))}</span>
                                         )}
 
                                     </p>
@@ -61,7 +63,7 @@ const ShoppingCartView = () => {
                         <tr>
                             <td className="total-row nomob"></td>
                             <td className="total-row" colSpan={3} align="right">
-                                <strong>Totalt: {total} kr</strong>
+                                <strong>Totalt: {formatPrice(total)}</strong>
                             </td>
                             <td className="total-row" align="right">
 

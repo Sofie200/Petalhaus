@@ -2,6 +2,7 @@ import { Link } from "react-router-dom"
 import useProduct from "../hooks/useProduct";
 import { useAuth } from "../hooks/useAuth";
 import { useShoppingCart } from "../contexts/ShoppingCart";
+import { useCurrency } from "../contexts/CurrencyContext";
 import ErrorMessage from "./ErrorMessage";
 import Loading from "./Loading";
 
@@ -10,6 +11,8 @@ export default function ProductDetails() {
     const { product, loading, error } = useProduct();
     const { user } = useAuth();
     const { addToCart, getItemQuantity, updateItemQuantity } = useShoppingCart();
+    const { formatPrice } = useCurrency();
+
     let quantity = "";
 
     if(!loading){
@@ -44,12 +47,12 @@ export default function ProductDetails() {
                     {product.discount > 0 ? (
                         <>
                             <span className="discounted">
-                                {product.price - product.discount} kr
+                                {formatPrice(product.price - product.discount)}
                             </span>
-                            &nbsp;<s className="original">{Math.round(product.price)} kr</s>
+                            &nbsp;<s className="original">{formatPrice(Math.round(product.price))}</s>
                         </>
                     ) : (
-                        <span>{Math.round(product.price)} kr</span>
+                            <span>{formatPrice(Math.round(product.price))}</span>
                     )}
                 </div>
                 {quantity === 0 ? (

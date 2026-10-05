@@ -1,6 +1,9 @@
 import { Link } from "react-router-dom";
+import { useCurrency } from "../contexts/CurrencyContext";
 
 const ProductsViewCard = ({ product }) => {
+
+    const { formatPrice } = useCurrency();
 
     return (
 
@@ -14,12 +17,12 @@ const ProductsViewCard = ({ product }) => {
                     {product.discount > 0 ? (
                         <>
                             <span className="discounted">
-                                {product.price - product.discount} kr
+                                {formatPrice(product.price - product.discount)}
                             </span>
-                            &nbsp;<s className="original">{Math.round(product.price)} kr</s>
+                            &nbsp;<s className="original">{formatPrice(Math.round(product.price))}</s>
                         </>
                     ) : (
-                            <span>{Math.round(product.price)} kr</span>
+                            <span>{formatPrice(Math.round(product.price))}</span>
                     )}
                 </div>
             </Link>
