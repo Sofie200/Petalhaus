@@ -6,6 +6,7 @@ import cartRouter from "./routes/cart-routes.js";
 import checkoutRouter from "./routes/checkout-routes.js";
 import userRouter from "./routes/user-routes.js";
 import orderRouter from "./routes/order-routes.js";
+import currencyRouter from "./routes/currency-routes.js";
 
 const app = express();
 const port = process.env.PORT || 3000;
@@ -24,6 +25,7 @@ app.use("/api/cart", cartRouter);
 app.use("/api/checkout", checkoutRouter);
 app.use("/api/user", userRouter);
 app.use("/api/orders", orderRouter);
+app.use("/api/currency", currencyRouter);
 
 // 404 handler
 app.use((req, res) => {
@@ -31,7 +33,7 @@ app.use((req, res) => {
 });
 
 // GLOBAL error handler
-app.use((err, req, res) => {
+app.use((err, req, res, next) => {
     console.error("GLOBAL ERROR:", err);
     res.status(500).json({ error: err.message || "Internal server error" });
 });
