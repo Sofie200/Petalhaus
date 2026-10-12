@@ -4,9 +4,10 @@ import { getRates } from '../integrations/currencyAdapter.js';
 const router = Router()
 
 router.get('/rates', async (req, res) => {
-    const base = (req.query.base ?? 'SEK')
+    const { fromCache, ...rates } = await getRates();
 
-    res.json(await getRates(base))
+    res.set('X-Cache', fromCache ? 'HIT' : 'MISS');
+    res.json(rates)
 })
 
 export default router
