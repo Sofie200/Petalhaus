@@ -11,6 +11,7 @@ import Product from "./pages/Product";
 import Cart from './pages/Cart';
 import ManageProduct from './pages/admin/ManageProduct';
 import AddProduct from './pages/admin/AddProduct';
+import Import from './pages/admin/Import';
 import Checkout from './pages/Checkout';
 import Profile from './pages/Profile';
 import ManageOrders from './pages/admin/ManageOrders';
@@ -50,7 +51,7 @@ function App() {
 								<Route path="/unauthorized" element={<Unauthorized />} />
 								<Route path="/admin/add-product/" element={<ProtectedRoute role={"admin"}><AddProduct /></ProtectedRoute>} />
 								<Route path="/admin/manage-product/:id" element={<ProtectedRoute role={"admin"}><ManageProduct /></ProtectedRoute>} />
-								<Route path="/admin/manage-orders" element={<ProtectedRoute role={"admin"}><ManageOrders /></ProtectedRoute>} />
+								<Route path="/admin/import" element={<ProtectedRoute role={"admin"}><Import /></ProtectedRoute>} />
 							</Routes>
 						</div>
 					</main>

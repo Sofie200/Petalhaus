@@ -12,6 +12,8 @@ const Nav = () => {
                     <Link to="/admin/add-product">Lägg till produkt</Link>
                     &nbsp;|&nbsp;
                     <Link to="/admin/manage-orders">Orderhantering</Link>
+                    &nbsp;|&nbsp;
+                    <Link to="/admin/import">Importera från CSV/XML</Link>
                 </nav>
             )}
         </div>
