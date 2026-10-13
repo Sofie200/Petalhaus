@@ -15,9 +15,11 @@
   "dependencies": {
     "@eslint/js": "^10.0.1",
     "cors": "^2.8.6",
+    "csv-parse": "^7.0.3",
     "dotenv": "^17.4.2",
     "eslint": "^10.9.1",
     "express": "^5.2.1",
+    "fast-xml-parser": "^5.11.2",
     "globals": "^17.11.0",
     "jsonwebtoken": "^9.0.3",
     "nodemon": "^1.14.10",
