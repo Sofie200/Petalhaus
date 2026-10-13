@@ -1,12 +1,13 @@
 import express from "express";
 import cors from "cors";
-import loginRouter from "./routes/login-routes.js";
-import productRouter from "./routes/product-routes.js";
-import cartRouter from "./routes/cart-routes.js";
-import checkoutRouter from "./routes/checkout-routes.js";
-import userRouter from "./routes/user-routes.js";
-import orderRouter from "./routes/order-routes.js";
-import currencyRouter from "./routes/currency-routes.js";
+import loginRouter from "./_routes/login-routes.js";
+import productRouter from "./_routes/product-routes.js";
+import cartRouter from "./_routes/cart-routes.js";
+import checkoutRouter from "./_routes/checkout-routes.js";
+import userRouter from "./_routes/user-routes.js";
+import orderRouter from "./_routes/order-routes.js";
+import currencyRouter from "./_routes/currency-routes.js";
+import importRouter from "./_routes/import-routes.js";
 
 const app = express();
 const port = process.env.PORT || 3000;
@@ -26,6 +27,7 @@ app.use("/api/checkout", checkoutRouter);
 app.use("/api/user", userRouter);
 app.use("/api/orders", orderRouter);
 app.use("/api/currency", currencyRouter);
+app.use("/api/import", importRouter);
 
 // 404 handler
 app.use((req, res) => {
@@ -38,6 +40,10 @@ app.use((err, req, res, next) => {
     res.status(500).json({ error: err.message || "Internal server error" });
 });
 
-app.listen(port, () => {
-    console.log(`Backend running on port ${port}`);
-});
+if (!process.env.VERCEL) {
+    app.listen(port, () => {
+        console.log(`Backend running on port ${port}`);
+    });
+}
+
+export default app;
