@@ -10,13 +10,25 @@ import { z } from 'zod';
 const BASE_URL = "https://leverantor-api.vercel.app/v1/export/products";
 const HEADERS = { "X-Api-Key": process.env.IMPORT_API_KEY ?? "" };
 
-// Hur en rad i leverantörens CSV SKA se ut. Allt är text i en CSV.
+// Delade regler, så att CSV och XML alltid kontrolleras likadant
+const ean = z.string().regex(/^\d{8}$|^\d{13}$/, "EAN ska vara 8 eller 13 siffror");
+const price = z.string().regex(/^\d+([.,]\d{1,2})?$/, 'Pris ska se ut som "599", "599,00" eller "599.00"');
+
 const CsvRow = z.object({
-  ean: z.string().regex(/^\d{8}$|^\d{13}$/, "EAN ska vara 8 eller 13 siffror"),
+  ean,
   benamning: z.string().min(1),
   kategori: z.string().min(1),
-  pris: z.string().regex(/^\d+(,\d{1,2})?$/, 'Pris ska se ut som "599" eller "599,00"'),
+  pris: price,
   uppdaterad: z.iso.date(),
+});
+
+// Samma fält, men <pris> har ett attribut, så texten ligger i "#text"
+const XmlRow = z.object({
+  ean,
+  benamning: z.string().min(1),
+  kategori: z.string().min(1),
+  pris: z.object({ "#text": price }),
+  uppdaterad: z.iso.datetime(),
 });
 
 // "599,00" → 599. The Swedish decimal comma must become a dot before Number().
@@ -27,6 +39,22 @@ function toNumber(text) {
 // An empty stock value means "unknown". We count it as 0 in stock.
 function toStock(text) {
   return text === "" ? 0 : Number(text);
+}
+
+// Validerar varje rad, hoppar över de trasiga och loggar varför
+function validateRows(rows, schema, label) {
+  const valid = [];
+  let skippedCount = 0;
+  for (const [index, raw] of rows.entries()) {
+    const result = schema.safeParse(raw);
+    if (result.success) {
+      valid.push(result.data);
+    } else {
+      skippedCount++;
+      console.warn(`[${label}] Skipping item ${index + 1}:`, z.prettifyError(result.error));
+    }
+  }
+  return { valid, skippedCount };
 }
 
 /* --- CSV --- */
@@ -60,20 +88,10 @@ export async function getCsvProducts() {
   console.log("[CSV] 4. After parse:", rows);
 
   // 5. Validate each row, skip the broken ones
-  const validRows = [];
-  let skippedCount = 0;
-  for (const [index, raw] of rows.entries()) {
-    const result = CsvRow.safeParse(raw);
-    if (result.success) {
-      validRows.push(result.data);
-    } else {
-      skippedCount++;
-      console.warn(`[CSV] Skipping row ${index + 2}:`, z.prettifyError(result.error));
-    }
-  }
+  const { valid, skippedCount } = validateRows(rows, CsvRow, "CSV");
 
   // 6. Supplier's fields → our fields, text → number
-  const products = validRows.map((row) => ({
+  const products = valid.map((row) => ({
     ean: row.ean,
     name: row.benamning,
     category: row.kategori,
@@ -111,16 +129,18 @@ export async function getXmlProducts() {
   const doc = xmlParser.parse(text);
   console.log("[XML] 3. After parse:", JSON.stringify(doc, null, 2));
 
-  // 4. Supplier's fields → our fields, text → number
-  const products = doc.katalog.produkt.map((p) => ({
-    sku: p["@_artNr"], // attributes get the prefix "@_"
+    // 4. Validate each product, skip the broken ones
+  const { valid, skippedCount } = validateRows(doc.katalog.produkt, XmlRow, "XML");
+
+  // 5. Supplier's fields → our fields
+  const products = valid.map((p) => ({
     ean: p.ean,
     name: p.benamning,
-    price: toNumber(p.pris["#text"]), // <pris> has an attribute, so its text ends up in '#text'
-    stock: toStock(p.lagersaldo),
-    variants: p.varianter?.variant ?? [], // LEV-1003 has no <varianter>
+    category: p.kategori,
+    price: toNumber(p.pris["#text"]),
+    updated: p.uppdaterad.slice(0, 10), // "2026-09-01T08:00:00.000Z" → "2026-09-01",
   }));
-  console.log("[XML] 4. Our model:", products);
+  console.log("[XML] 5. Our model:", products);
 
-  return { text, parsed: doc, products };
+  return { text, parsed: doc, products, skippedCount };
 }
