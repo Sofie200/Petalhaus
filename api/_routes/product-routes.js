@@ -1,5 +1,5 @@
 import express from "express";
-import { pool } from "../db/pool.js";
+import { pool } from "../_db/pool.js";
 import { verifyToken } from "../middleware/verifyToken.js";
 import { requireAdmin } from "../middleware/requireAdmin.js";
 
