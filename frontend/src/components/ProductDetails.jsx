@@ -12,6 +12,7 @@ export default function ProductDetails() {
     const { user } = useAuth();
     const { addToCart, getItemQuantity, updateItemQuantity } = useShoppingCart();
     const { formatPrice } = useCurrency();
+    const FALLBACK_IMAGE = "/images/dummy.png";
 
     let quantity = "";
 
@@ -30,7 +31,15 @@ export default function ProductDetails() {
     return (
         <section>
             <div className="product-image">
-                <img src={product.image} alt={product.name} />
+                <img
+                    src={product.image || FALLBACK_IMAGE}
+                    alt={product.name}
+                    onError={(e) => {
+                        if (!e.currentTarget.src.endsWith(FALLBACK_IMAGE)) {
+                            e.currentTarget.src = FALLBACK_IMAGE;
+                        }
+                    }}
+                />
                 {user?.role === "admin" && (
                     <Link
                         to={`/admin/manage-product/${product.id}`}
@@ -39,7 +48,7 @@ export default function ProductDetails() {
                         Hantera
                     </Link>
                 )}
-            </div> 
+            </div>
             <div className="product-details">
                 <h2>{product.name}</h2>
                 <p>{product.description}</p>

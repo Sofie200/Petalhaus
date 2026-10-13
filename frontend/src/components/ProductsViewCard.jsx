@@ -4,13 +4,22 @@ import { useCurrency } from "../contexts/CurrencyContext";
 const ProductsViewCard = ({ product }) => {
 
     const { formatPrice } = useCurrency();
+    const FALLBACK_IMAGE = "/images/dummy.png";
 
     return (
 
         <div className="card">
             <Link to={`/product/${product.id}`}>
                 <div className="imageWrapper">
-                    <img src={product.image} alt={product.name} />
+                    <img
+                        src={product.image || FALLBACK_IMAGE}
+                        alt={product.name}
+                        onError={(e) => {
+                            if (!e.currentTarget.src.endsWith(FALLBACK_IMAGE)) {
+                                e.currentTarget.src = FALLBACK_IMAGE;
+                            }
+                        }}
+                    />
                 </div>
                 <div className="title">{product.name}</div>
                 <div className="price">
