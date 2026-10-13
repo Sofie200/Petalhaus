@@ -5,9 +5,19 @@
 
 import { parse } from "csv-parse/sync";
 import { XMLParser } from "fast-xml-parser";
+import { z } from 'zod';
 
 const BASE_URL = "https://leverantor-api.vercel.app/v1/export/products";
 const HEADERS = { "X-Api-Key": process.env.IMPORT_API_KEY ?? "" };
+
+// Hur en rad i leverantörens CSV SKA se ut. Allt är text i en CSV.
+const CsvRow = z.object({
+  ean: z.string().regex(/^\d{8}$|^\d{13}$/, "EAN ska vara 8 eller 13 siffror"),
+  benamning: z.string().min(1),
+  kategori: z.string().min(1),
+  pris: z.string().regex(/^\d+(,\d{1,2})?$/, 'Pris ska se ut som "599" eller "599,00"'),
+  uppdaterad: z.iso.date(),
+});
 
 // "599,00" → 599. The Swedish decimal comma must become a dot before Number().
 function toNumber(text) {
@@ -24,6 +34,7 @@ function toStock(text) {
 export async function getCsvProducts() {
   // 1. Fetch – exactly like with JSON
   const response = await fetch(`${BASE_URL}.csv?bransch=vaxter`, { headers: HEADERS });
+
   console.log("\n[CSV] 1. Content-Type:", response.headers.get("content-type"));
 
   // 2. Raw bytes. NOT .json() (it isn't JSON) and NOT .text().
@@ -48,18 +59,31 @@ export async function getCsvProducts() {
   });
   console.log("[CSV] 4. After parse:", rows);
 
-  // 5. Supplier's fields → our fields, text → number
-  const products = rows.map((row) => ({
-    sku: row.artNr,
-    ean: row.ean, // text, not a number: 0735100197975 must keep its leading zero
+  // 5. Validate each row, skip the broken ones
+  const validRows = [];
+  let skippedCount = 0;
+  for (const [index, raw] of rows.entries()) {
+    const result = CsvRow.safeParse(raw);
+    if (result.success) {
+      validRows.push(result.data);
+    } else {
+      skippedCount++;
+      console.warn(`[CSV] Skipping row ${index + 2}:`, z.prettifyError(result.error));
+    }
+  }
+
+  // 6. Supplier's fields → our fields, text → number
+  const products = validRows.map((row) => ({
+    ean: row.ean,
     name: row.benamning,
+    category: row.kategori,
     price: toNumber(row.pris),
-    stock: toStock(row.lagersaldo),
-    variants: row.varianter ? row.varianter.split("|") : [], // "S|M|L" → ["S", "M", "L"]
+    updated: row.uppdaterad,
   }));
+
   console.log("[CSV] 5. Our model:", products);
 
-  return { text, rows, products };
+  return { text, rows, products, skippedCount };
 }
 
 /* --- XML --- */
