@@ -8,6 +8,8 @@ import userRouter from "./_routes/user-routes.js";
 import orderRouter from "./_routes/order-routes.js";
 import currencyRouter from "./_routes/currency-routes.js";
 import importRouter from "./_routes/import-routes.js";
+import adminRouter from "./_routes/admin-routes.js";
+import searchRouter from "./_routes/search-routes.js";
 
 const app = express();
 const port = process.env.PORT || 3000;
@@ -28,6 +30,8 @@ app.use("/api/user", userRouter);
 app.use("/api/orders", orderRouter);
 app.use("/api/currency", currencyRouter);
 app.use("/api/import", importRouter);
+app.use('/api/admin', adminRouter);
+app.use('/api/search', searchRouter);
 
 // 404 handler
 app.use((req, res) => {
