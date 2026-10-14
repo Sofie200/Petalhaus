@@ -44,22 +44,26 @@ function toStock(text) {
 // Validerar varje rad, hoppar över de trasiga och loggar varför
 function validateRows(rows, schema, label) {
   const valid = [];
-  let skippedCount = 0;
+  const skipped = [];
   for (const [index, raw] of rows.entries()) {
     const result = schema.safeParse(raw);
     if (result.success) {
       valid.push(result.data);
     } else {
-      skippedCount++;
+      const reason = result.error.issues
+        .map((i) => `${i.path.join(".") || "rad"}: ${i.message}`)
+        .join("; ");
+      skipped.push({ row: index + 1, ean: raw?.ean ?? null, reason });
       console.warn(`[${label}] Skipping item ${index + 1}:`, z.prettifyError(result.error));
     }
   }
-  return { valid, skippedCount };
+  return { valid, skipped };
 }
 
 /* --- CSV --- */
 
 export async function getCsvProducts() {
+  
   // 1. Fetch – exactly like with JSON
   const response = await fetch(`${BASE_URL}.csv?bransch=vaxter`, { headers: HEADERS });
 
@@ -88,7 +92,7 @@ export async function getCsvProducts() {
   console.log("[CSV] 4. After parse:", rows);
 
   // 5. Validate each row, skip the broken ones
-  const { valid, skippedCount } = validateRows(rows, CsvRow, "CSV");
+  const { valid, skipped } = validateRows(rows, CsvRow, "CSV");
 
   // 6. Supplier's fields → our fields, text → number
   const products = valid.map((row) => ({
@@ -101,7 +105,7 @@ export async function getCsvProducts() {
 
   console.log("[CSV] 5. Our model:", products);
 
-  return { text, rows, products, skippedCount };
+  return { text, rows, products, skipped, skippedCount: skipped.length };
 }
 
 /* --- XML --- */
@@ -116,6 +120,7 @@ const xmlParser = new XMLParser({
 });
 
 export async function getXmlProducts() {
+
   // 1. Fetch
   const response = await fetch(`${BASE_URL}.xml?bransch=vaxter`, { headers: HEADERS });
   console.log("\n[XML] 1. Content-Type:", response.headers.get("content-type"));
@@ -129,8 +134,8 @@ export async function getXmlProducts() {
   const doc = xmlParser.parse(text);
   console.log("[XML] 3. After parse:", JSON.stringify(doc, null, 2));
 
-    // 4. Validate each product, skip the broken ones
-  const { valid, skippedCount } = validateRows(doc.katalog.produkt, XmlRow, "XML");
+  // 4. Validate each product, skip the broken ones
+  const { valid, skipped } = validateRows(doc.katalog.produkt, XmlRow, "XML");
 
   // 5. Supplier's fields → our fields
   const products = valid.map((p) => ({
@@ -142,5 +147,5 @@ export async function getXmlProducts() {
   }));
   console.log("[XML] 5. Our model:", products);
 
-  return { text, parsed: doc, products, skippedCount };
+  return { text, parsed: doc, products, skipped, skippedCount: skipped.length };
 }

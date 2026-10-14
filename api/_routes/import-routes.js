@@ -1,5 +1,5 @@
 import { Router } from "express";
-import { getCsvProducts, getXmlProducts } from "../_integrations/importAdapter.js";
+import { getCsvProducts, getXmlProducts } from "../_integrations/supplierAdapter.js";
 import { upsertProducts } from "../_db/upsertProducts.js";
 import { verifyToken } from "../middleware/verifyToken.js";
 import { requireAdmin } from "../middleware/requireAdmin.js";
@@ -25,9 +25,17 @@ for (const [format, getProducts] of Object.entries(SOURCES)) {
     // Importera: hämta, validera och spara i databasen
     importRouter.post(`/${format}`, async (req, res, next) => {
         try {
-            const { products, skippedCount } = await getProducts();
-            const saved = await upsertProducts(products);
-            res.json({ format, saved, skippedCount });
+            const { products, skipped: invalid } = await getProducts();
+            const { inserted, updated, skipped } = await upsertProducts(products);
+            const allSkipped = [...invalid, ...skipped];
+
+            res.json({
+                format,
+                counts: { inserted: inserted.length, updated: updated.length, skipped: allSkipped.length },
+                inserted,
+                updated,
+                skipped: allSkipped,
+            });
         } catch (err) {
             next(err);
         }
