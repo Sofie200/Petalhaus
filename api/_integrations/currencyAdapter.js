@@ -1,5 +1,5 @@
 import { z } from 'zod';
-import { fetchJson } from './_lib/fetchJson.js';
+import { fetchWithRetry } from './_lib/fetchWithRetry.js';
 
 const BASE_URL = process.env.CURRENCY_API_URL ?? 'https://api.frankfurter.dev/v1';
 const TIMEOUT_MS = Number(process.env.CURRENCY_API_TIMEOUT_MS ?? 5000);
@@ -15,31 +15,27 @@ const FrankfurterRates = z.object({
     rates: z.record(z.string(), z.number().nonnegative()),
 });
 
-// https://api.frankfurter.dev/v1/latest?base=SEK&symbols=SEK,USD,EUR
+// https://api.frankfurter.dev/v1/latest?base=SEK&symbols=DKK,NOK,EUR
 
-export async function fetchRates()  {
-    const url = new URL(`${BASE_URL}/latest`)
-    url.searchParams.set('base', BASE)
-    url.searchParams.set('symbols', SYMBOLS.join(','))
-    
+export async function fetchRates() {
+    const url = new URL(`${BASE_URL}/latest`);
+    url.searchParams.set('base', BASE);
+    url.searchParams.set('symbols', SYMBOLS.join(','));
+
     try {
-
-        const data = await fetchJson(url.toString(), { timeoutMs: TIMEOUT_MS });
+        const response = await fetchWithRetry(url.toString(), { timeoutMs: TIMEOUT_MS });
+        const data = await response.json();
 
         const parsed = FrankfurterRates.safeParse(data);
-
         if (!parsed.success) {
             throw new Error(`Frankfurter responded with an unexpected format:\n${z.prettifyError(parsed.error)}`);
-        }        
-        
-        return {
-          base: data.base,
-          date: data.date,
-          rates: data.rates
         }
-        
-    } catch(err) {
-        throw new Error(`Something when wrong`);
+
+        const { base, date, rates } = parsed.data;
+        return { base, date, rates };
+
+    } catch (err) {
+        throw new Error(`Could not fetch currency rates: ${err.message}`, { cause: err });
     }
 }
 

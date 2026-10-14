@@ -5,10 +5,12 @@
 
 import { parse } from "csv-parse/sync";
 import { XMLParser } from "fast-xml-parser";
-import { z } from 'zod';
+import { z } from "zod";
+import { fetchWithRetry } from "./_lib/fetchWithRetry.js";
 
 const BASE_URL = "https://leverantor-api.vercel.app/v1/export/products";
 const HEADERS = { "X-Api-Key": process.env.IMPORT_API_KEY ?? "" };
+const TIMEOUT_MS = 10000; // filerna kan vara större än ett vanligt JSON-svar
 
 // Delade regler, så att CSV och XML alltid kontrolleras likadant
 const ean = z.string().regex(/^\d{8}$|^\d{13}$/, "EAN ska vara 8 eller 13 siffror");
@@ -36,12 +38,7 @@ function toNumber(text) {
   return Number(text.replace(",", "."));
 }
 
-// An empty stock value means "unknown". We count it as 0 in stock.
-function toStock(text) {
-  return text === "" ? 0 : Number(text);
-}
-
-// Validerar varje rad, hoppar över de trasiga och loggar varför
+// Validerar varje rad, hoppar över de trasiga och sparar varför
 function validateRows(rows, schema, label) {
   const valid = [];
   const skipped = [];
@@ -63,10 +60,13 @@ function validateRows(rows, schema, label) {
 /* --- CSV --- */
 
 export async function getCsvProducts() {
-  
-  // 1. Fetch – exactly like with JSON
-  const response = await fetch(`${BASE_URL}.csv?bransch=vaxter`, { headers: HEADERS });
 
+  // 1. Fetch, with retry on temporary errors. Throws on 4xx/5xx,
+  // so we never try to parse an error page as CSV.
+  const response = await fetchWithRetry(`${BASE_URL}.csv?bransch=vaxter`, {
+    headers: HEADERS,
+    timeoutMs: TIMEOUT_MS,
+  });
   console.log("\n[CSV] 1. Content-Type:", response.headers.get("content-type"));
 
   // 2. Raw bytes. NOT .json() (it isn't JSON) and NOT .text().
@@ -102,7 +102,6 @@ export async function getCsvProducts() {
     price: toNumber(row.pris),
     updated: row.uppdaterad,
   }));
-
   console.log("[CSV] 5. Our model:", products);
 
   return { text, rows, products, skipped, skippedCount: skipped.length };
@@ -121,8 +120,11 @@ const xmlParser = new XMLParser({
 
 export async function getXmlProducts() {
 
-  // 1. Fetch
-  const response = await fetch(`${BASE_URL}.xml?bransch=vaxter`, { headers: HEADERS });
+  // 1. Fetch, with retry on temporary errors
+  const response = await fetchWithRetry(`${BASE_URL}.xml?bransch=vaxter`, {
+    headers: HEADERS,
+    timeoutMs: TIMEOUT_MS,
+  });
   console.log("\n[XML] 1. Content-Type:", response.headers.get("content-type"));
 
   // 2. This file is UTF-8, so .text() works. It's the file's encoding that matters, not the format:
@@ -134,8 +136,10 @@ export async function getXmlProducts() {
   const doc = xmlParser.parse(text);
   console.log("[XML] 3. After parse:", JSON.stringify(doc, null, 2));
 
-  // 4. Validate each product, skip the broken ones
-  const { valid, skipped } = validateRows(doc.katalog.produkt, XmlRow, "XML");
+  // 4. Validate each product, skip the broken ones.
+  // An empty <katalog/> gives no "produkt" at all, so fall back to an empty list.
+  const items = doc?.katalog?.produkt ?? [];
+  const { valid, skipped } = validateRows(items, XmlRow, "XML");
 
   // 5. Supplier's fields → our fields
   const products = valid.map((p) => ({
@@ -143,7 +147,7 @@ export async function getXmlProducts() {
     name: p.benamning,
     category: p.kategori,
     price: toNumber(p.pris["#text"]),
-    updated: p.uppdaterad.slice(0, 10), // "2026-09-01T08:00:00.000Z" → "2026-09-01",
+    updated: p.uppdaterad.slice(0, 10), // "2026-09-01T08:00:00.000Z" → "2026-09-01"
   }));
   console.log("[XML] 5. Our model:", products);
 

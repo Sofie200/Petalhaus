@@ -1,17 +1,11 @@
-/**
- * Extra: retries on temporary errors
- * (instruktionskommentaren kan ligga kvar oförändrad här)
- */
+// Fetch med nya försök vid tillfälliga fel.
+// Returnerar Response, så att den som anropar själv väljer hur bodyn läses
+// (json, text, arrayBuffer).
 
 const RETRYABLE = new Set([408, 429, 500, 502, 503, 504]); // a Set has a fast has() check
 const MAX_ATTEMPTS = 3;
 
-/**
- * @param {string} url
- * @param {{ headers?: Record<string, string>, timeoutMs?: number }} [options]
- * @returns {Promise<unknown>}
- */
-export async function fetchJson(url, { headers = {}, timeoutMs = 5000 } = {}) {
+export async function fetchWithRetry(url, { headers = {}, timeoutMs = 5000 } = {}) {
   for (let attempt = 1; attempt <= MAX_ATTEMPTS; attempt++) {
     let response;
     try {
@@ -28,12 +22,13 @@ export async function fetchJson(url, { headers = {}, timeoutMs = 5000 } = {}) {
     }
 
     if (response.ok) {
-      return response.json();
+      return response;
     }
     if (!RETRYABLE.has(response.status) || attempt === MAX_ATTEMPTS) {
       throw new Error(`Permanent error or out of retries: ${response.status} ${response.statusText}`);
     }
 
+    await response.body?.cancel(); // släpp anslutningen innan nästa försök
     console.warn(`Status ${response.status}, attempt ${attempt} of ${MAX_ATTEMPTS}. Trying again in 1 second.`);
     await new Promise((resolve) => setTimeout(resolve, 1000));
   }
