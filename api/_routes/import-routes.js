@@ -13,7 +13,7 @@ const SOURCES = {
 
 for (const [format, getProducts] of Object.entries(SOURCES)) {
     // Förhandsgranska: hämta och validera, men spara ingenting
-    importRouter.get(`/${format}`, async (req, res, next) => {
+    importRouter.get(`/${format}`, verifyToken, requireAdmin, async (req, res, next) => {
         try {
             const result = await getProducts();
             res.json(req.query.debug ? result : result.products);
@@ -23,7 +23,7 @@ for (const [format, getProducts] of Object.entries(SOURCES)) {
     });
 
     // Importera: hämta, validera och spara i databasen
-    importRouter.post(`/${format}`, async (req, res, next) => {
+    importRouter.post(`/${format}`, verifyToken, requireAdmin, async (req, res, next) => {
         try {
             const { products, skipped: invalid } = await getProducts();
             const { inserted, updated, skipped } = await upsertProducts(products);
