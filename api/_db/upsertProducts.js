@@ -5,14 +5,14 @@ export async function upsertProducts(products) {
 
     // Dubbletter inom importen. Måste bort, annars kastar Postgres
     // "ON CONFLICT DO UPDATE command cannot affect row a second time"
-    const seen = new Set();
+    const seen = new Map(); // ean → första radnumret
     const candidates = [];
     for (const p of products) {
         if (seen.has(p.ean)) {
-            skipped.push({ ean: p.ean, reason: "Dubblett i importen" });
+            skipped.push({ row: p.row, ean: p.ean, reason: `Dubblett av rad ${seen.get(p.ean)}` });
             continue;
         }
-        seen.add(p.ean);
+        seen.set(p.ean, p.row);
         candidates.push(p);
     }
 
@@ -45,7 +45,7 @@ export async function upsertProducts(products) {
     // Det som inte kom tillbaka i RETURNING fanns redan och var identiskt
     const touched = new Set(rows.map((r) => r.ean));
     for (const p of candidates) {
-        if (!touched.has(p.ean)) skipped.push({ ean: p.ean, reason: "Oförändrad" });
+        if (!touched.has(p.ean)) skipped.push({ row: p.row, ean: p.ean, reason: "Oförändrad" });
     }
 
     return { inserted, updated, skipped };

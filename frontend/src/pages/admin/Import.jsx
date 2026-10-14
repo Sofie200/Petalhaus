@@ -48,7 +48,7 @@ const Import = () => {
 
                     <section className="import-table-wrapper">
                         <h3>Överhoppade ({result.skipped.length})</h3>
-                        {result.skipped.length === 0 ? <p>Inga</p> : (
+                        {result.skipped.length === 0 ? <p></p> : (
                             <table className="import-table">
                                 <thead>
                                     <tr><th>Rad</th><th>EAN</th><th>Anledning</th></tr>

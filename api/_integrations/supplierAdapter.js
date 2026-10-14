@@ -45,7 +45,7 @@ function validateRows(rows, schema, label) {
   for (const [index, raw] of rows.entries()) {
     const result = schema.safeParse(raw);
     if (result.success) {
-      valid.push(result.data);
+      valid.push({ ...result.data, row: index + 1 });
     } else {
       const reason = result.error.issues
         .map((i) => `${i.path.join(".") || "rad"}: ${i.message}`)
@@ -95,13 +95,15 @@ export async function getCsvProducts() {
   const { valid, skipped } = validateRows(rows, CsvRow, "CSV");
 
   // 6. Supplier's fields → our fields, text → number
-  const products = valid.map((row) => ({
-    ean: row.ean,
-    name: row.benamning,
-    category: row.kategori,
-    price: toNumber(row.pris),
-    updated: row.uppdaterad,
+  const products = valid.map((r) => ({
+    row: r.row,
+    ean: r.ean,
+    name: r.benamning,
+    category: r.kategori,
+    price: toNumber(r.pris),
+    updated: r.uppdaterad,
   }));
+
   console.log("[CSV] 5. Our model:", products);
 
   return { text, rows, products, skipped, skippedCount: skipped.length };
@@ -142,7 +144,9 @@ export async function getXmlProducts() {
   const { valid, skipped } = validateRows(items, XmlRow, "XML");
 
   // 5. Supplier's fields → our fields
+  // XML
   const products = valid.map((p) => ({
+    row: p.row,
     ean: p.ean,
     name: p.benamning,
     category: p.kategori,
