@@ -4,30 +4,30 @@ import { searchProducts } from '../_integrations/searchAdapter.js'
 
 const router = Router()
 
-
 // Here we validate data from the USER before sending it on to another system.
 const SearchQuery = z.object({
-  q: z.string().max(100).default(''),
-  category: z.string().max(100).optional(), 
-  inStock: z.stringbool().optional(), // 'true' -> true, 'false' -> false, anything else → 400
-  page: z.coerce.number().int().min(1).default(1), // '2' => 2
-  pageSize: z.coerce.number().int().min(1).max(50).default(10), // max '50' => 50
+    q: z.string().max(100).default(''),
+    page: z.coerce.number().int().min(1).default(1),
+    pageSize: z.coerce.number().int().min(1).max(50).default(10),
 });
 
-
-// GET /api/search?q=hoodie → search in Algolia
-// Anyone may do this: it only READS, with the search key.
+// GET /api/search?q=ros&page=2
 router.get('/', async (req, res) => {
-  // const searchText = typeof req.query.q === 'string' ? req.query.q : ''
-  // 1. Validate the parameters
-  const result = SearchQuery.safeParse(req.query);
-  if (!result.success) {
-    res.status(400).json({ error: 'Invalid search parameters', details: z.prettifyError(result.error) });
-    return;
-  }
+    // 1. Validate the parameters
+    const parsed = SearchQuery.safeParse(req.query);
+    if (!parsed.success) {
+        return res.status(400).json({ error: 'Invalid search parameters', details: z.prettifyError(parsed.error) });
+    }
 
-  // 2. The adapter searches and returns OUR model: a list of products
-  res.json(await searchProducts(result.data.q));
-})
+    const { q, page, pageSize } = parsed.data;
+
+    // 2. Search in Algolia
+    try {
+        res.json(await searchProducts(q, page, pageSize));
+    } catch (err) {
+        console.error('Algolia search failed:', err);
+        res.status(502).json({ error: 'Search is unavailable right now. Try again later.' });
+    }
+});
 
 export default router

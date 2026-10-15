@@ -16,29 +16,6 @@ productRouter.get("/", async (req, res, next) => {
     }
 });
 
-/* --- SEARCH PRODUCTS --- */
-productRouter.get("/search", async (req, res, next) => {
-    const { search } = req.query;
-    try {
-
-        if (!search || search.trim() === "") {
-            return res.status(400).json({ error: "Missing search query" });
-        }
-
-        const result = await pool.query("SELECT * FROM product WHERE name ILIKE $1",
-            [`%${search}%`]);
-
-        if (result.rows.length === 0) {
-            return res.status(404).json({ error: "No search match" });
-        }
-
-        res.json(result.rows);
-
-    } catch (err) {
-        next(err);
-    }
-});
-
 /* --- GET PRODUCT BY ID --- */
 productRouter.get("/:id", async (req, res, next) => {
     try {
