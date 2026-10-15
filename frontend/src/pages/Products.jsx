@@ -13,7 +13,7 @@ const Products = () => {
 
         // Vänta tills användaren slutat skriva en stund
         const timer = setTimeout(async () => {
-            setLoading(true);
+            if (search.trim() === "") setLoading(true);
             setError(null);
 
             try {
