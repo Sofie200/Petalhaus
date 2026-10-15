@@ -7,13 +7,15 @@ import { requireAdmin } from "../middleware/requireAdmin.js";
 const router = Router()
 
 /* --- INDEX ALL: POST /api/admin/search/index --- */
-router.post('/search/index', verifyToken, requireAdmin, async (_req, res, next) => {
+router.post('/search/index', async (_req, res, next) => {
+
     // 1. Fetch all products from the DB
     let products
+    
     try {
         products = await getAllProducts()
     } catch (err) {
-        return next(err) // DB-fel är vårt fel, inte sökjänstens
+        return next(err)
     }
 
     // 2. Send them to Algolia
@@ -26,7 +28,9 @@ router.post('/search/index', verifyToken, requireAdmin, async (_req, res, next) 
     }
 })
 
-/* --- CREATE: POST /api/admin/products --- 
+
+/* --- CREATE: POST /api/admin/products --- */
+
 router.post('/products', async (req, res) => {
   const newProduct = {
     sku: 'LEV-1009',

@@ -1,5 +1,6 @@
 import express from "express";
 import { pool } from "../_db/pool.js";
+import { indexProducts, removeProducts } from "../_integrations/searchAdapter.js";
 import { verifyToken } from "../middleware/verifyToken.js";
 import { requireAdmin } from "../middleware/requireAdmin.js";
 
@@ -58,48 +59,69 @@ productRouter.get("/:id", async (req, res, next) => {
 
 /* --- CREATE PRODUCT --- */
 productRouter.post("/", verifyToken, requireAdmin, async (req, res, next) => {
-    const { name, description, category_id, image, price, discount } = req.body;
+    const { name, description, category, image, price, discount } = req.body;
 
+    let product;
     try {
         const result = await pool.query(
-            `INSERT INTO product (name, description, category_id, image, price, discount)
+            `INSERT INTO product (name, description, category, image, price, discount)
              VALUES ($1, $2, $3, $4, $5, $6)
              RETURNING *`,
-            [name, description, category_id, image, price, discount]
+            [name, description, category, image, price, discount]
         );
-
-        res.status(201).json(result.rows[0]);
+        product = result.rows[0];
     } catch (err) {
-        next(err);
+        return next(err);
     }
+
+    let searchIndexed = true;
+    try {
+        await indexProducts([product]);
+    } catch (err) {
+        console.warn("Could not index product in Algolia:", err);
+        searchIndexed = false;
+    }
+
+    res.status(201).json({ ...product, searchIndexed });
 });
 
 /* --- UPDATE PRODUCT --- */
 productRouter.put("/:id", verifyToken, requireAdmin, async (req, res, next) => {
-    const { name, description, category_id, image, price, discount } = req.body;
+    const { name, description, category, image, price, discount } = req.body;
 
+    let product;
     try {
         const result = await pool.query(
             `UPDATE product
-             SET name = $1, description = $2, category_id = $3,
+             SET name = $1, description = $2, category = $3,
                  image = $4, price = $5, discount = $6
              WHERE id = $7
              RETURNING *`,
-            [name, description, category_id, image, price, discount, req.params.id]
+            [name, description, category, image, price, discount, req.params.id]
         );
 
         if (result.rows.length === 0) {
             return res.status(404).json({ error: "Product not found" });
         }
-
-        res.json(result.rows[0]);
+        product = result.rows[0];
     } catch (err) {
-        next(err);
+        return next(err);
     }
+
+    let searchIndexed = true;
+    try {
+        await indexProducts([product]); // upsert: samma objectID ersätter posten
+    } catch (err) {
+        console.warn("Could not update product in Algolia:", err);
+        searchIndexed = false;
+    }
+
+    res.json({ ...product, searchIndexed });
 });
 
 /* --- DELETE PRODUCT --- */
 productRouter.delete("/:id", verifyToken, requireAdmin, async (req, res, next) => {
+    let product;
     try {
         const result = await pool.query(
             "DELETE FROM product WHERE id = $1 RETURNING *",
@@ -109,11 +131,20 @@ productRouter.delete("/:id", verifyToken, requireAdmin, async (req, res, next) =
         if (result.rows.length === 0) {
             return res.status(404).json({ error: "Product not found" });
         }
-
-        res.json({ message: "Product deleted", product: result.rows[0] });
+        product = result.rows[0];
     } catch (err) {
-        next(err);
+        return next(err);
     }
+
+    let searchIndexed = true;
+    try {
+        await removeProducts([product.id]);
+    } catch (err) {
+        console.warn("Could not remove product from Algolia:", err);
+        searchIndexed = false;
+    }
+
+    res.json({ message: "Product deleted", product, searchIndexed });
 });
 
 export default productRouter;
