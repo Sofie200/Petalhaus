@@ -1,8 +1,8 @@
 import { Router } from "express";
 import { getCsvProducts, getXmlProducts } from "../_integrations/supplierAdapter.js";
 import { upsertProducts } from "../_db/upsertProducts.js";
-import { verifyToken } from "../middleware/verifyToken.js";
-import { requireAdmin } from "../middleware/requireAdmin.js";
+import { verifyToken } from "../_middleware/verifyToken.js";
+import { requireAdmin } from "../_middleware/requireAdmin.js";
 
 const importRouter = Router();
 
