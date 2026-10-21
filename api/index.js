@@ -10,6 +10,8 @@ import currencyRouter from "./_routes/currency-routes.js";
 import importRouter from "./_routes/import-routes.js";
 import adminRouter from "./_routes/admin-routes.js";
 import searchRouter from "./_routes/search-routes.js";
+import webhookRouter from "./_routes/webhook.js"
+import checkoutRouter2 from "./_routes/checkout.js";
 
 const app = express();
 const port = process.env.PORT || 3000;
@@ -18,6 +20,8 @@ app.use(cors({
     origin: "http://localhost:5173",
     credentials: true
 }));
+
+app.use('/api/stripe/webhook', webhookRouter)
 
 app.use(express.json());
 app.use(express.urlencoded({ extended: true }));
@@ -32,6 +36,7 @@ app.use("/api/currency", currencyRouter);
 app.use("/api/import", importRouter);
 app.use('/api/admin', adminRouter);
 app.use('/api/search', searchRouter);
+app.use('/api/checkout2', checkoutRouter2)
 
 // 404 handler
 app.use((req, res) => {

@@ -1,4 +1,5 @@
 import OrderItemsView from "../components/OrderItemsView"
+import EmbeddedPayment from "../components/EmbeddedPayment"
 import { useShoppingCart } from "../contexts/ShoppingCart";
 import { useAuth } from "../hooks/useAuth";
 
@@ -67,6 +68,7 @@ const Checkout = () => {
             )}
             {cart.length !== 0 && (
                 <>
+                    <EmbeddedPayment cart={cart} />
                     <OrderItemsView handleCheckout={handleCheckout} />
                 </>
             )}
