@@ -1,0 +1,27 @@
+.page-nav{
+    margin: 2rem 0 1rem;
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    gap:10px;
+}
+
+.page-nav span {
+    color: var(--color-muted);
+    font-size: 0.8rem;
+}
+
+.page-nav button{
+    padding: 0;
+    width: 24px;
+    height: 24px;
+    border-radius: 999px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+}
+
+.page-nav button span{
+    font-size: 16px;
+    color:inherit;
+}

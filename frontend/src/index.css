@@ -174,7 +174,7 @@ section {
     align-items: center;
 }
 
-nav {
+.admin-nav {
     background-color: var(--color-accent);
     color: var(--color-bg);
     padding: 10px 14px;
@@ -183,12 +183,12 @@ nav {
     box-shadow: var(--shadow-soft);
 }
 
-nav a {
+.admin-nav a {
     color: var(--color-bg);
     font-weight: 500;
 }
 
-nav a:hover {
+.admin-nav a:hover {
     color: var(--color-primary);
 }
 
@@ -642,7 +642,7 @@ th {
         font-size: 2.5rem;
     }
 
-    nav {
+    .admin-nav {
         margin-bottom: 16px;
     }
 
@@ -751,7 +751,7 @@ th {
         width: auto;
     }
 
-    nav {
+    .admin-nav {
         margin-bottom: 16px;
     }
 

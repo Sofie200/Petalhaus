@@ -8,7 +8,7 @@ const Nav = () => {
     return (
         <div>
             {user?.role === "admin" && (
-                <nav>
+                <nav className="admin-nav">
                     <Link to="/admin/add-product">Lägg till produkt</Link>
                     &nbsp;|&nbsp;
                     <Link to="/admin/manage-orders">Orderhantering</Link>
