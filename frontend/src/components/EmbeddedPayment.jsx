@@ -9,22 +9,29 @@ import { EmbeddedCheckout, EmbeddedCheckoutProvider } from '@stripe/react-stripe
 const stripePromise = loadStripe(import.meta.env.VITE_STRIPE_PUBLISHABLE_KEY)
 
 export default function EmbeddedPayment({ cart }) {
-  // Stripe calls this function when the form is shown.
-  // Our server creates the Checkout Session and returns its client secret.
-  const fetchClientSecret = useCallback(async () => {
-    const response = await fetch(`${import.meta.env.VITE_API_URL}/checkout2/embedded`, {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ items: cart }),
-    })
-    const body = await response.json()
-    if (!response.ok) throw new Error(body.error)
-    return body.clientSecret
-  }, [cart])
+    // Stripe calls this function when the form is shown.
+    // Our server creates the Checkout Session and returns its client secret.
+    const fetchClientSecret = useCallback(async () => {
+        const token = localStorage.getItem('token')
 
-  return (
-    <EmbeddedCheckoutProvider stripe={stripePromise} options={{ fetchClientSecret }}>
-      <EmbeddedCheckout />
-    </EmbeddedCheckoutProvider>
-  )
+        const response = await fetch(`${import.meta.env.VITE_API_URL}/checkout/embedded`, {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+                'Authorization': `Bearer ${token}`,
+            },
+            body: JSON.stringify({
+                items: cart.map(({ id, quantity }) => ({ id, quantity })),
+            }),
+        })
+        const body = await response.json()
+        if (!response.ok) throw new Error(body.error)
+        return body.clientSecret
+    }, [cart])
+
+    return (
+        <EmbeddedCheckoutProvider stripe={stripePromise} options={{ fetchClientSecret }}>
+            <EmbeddedCheckout />
+        </EmbeddedCheckoutProvider>
+    )
 }

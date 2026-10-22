@@ -3,7 +3,6 @@ import cors from "cors";
 import loginRouter from "./_routes/login-routes.js";
 import productRouter from "./_routes/product-routes.js";
 import cartRouter from "./_routes/cart-routes.js";
-import checkoutRouter from "./_routes/checkout-routes.js";
 import userRouter from "./_routes/user-routes.js";
 import orderRouter from "./_routes/order-routes.js";
 import currencyRouter from "./_routes/currency-routes.js";
@@ -11,7 +10,7 @@ import importRouter from "./_routes/import-routes.js";
 import adminRouter from "./_routes/admin-routes.js";
 import searchRouter from "./_routes/search-routes.js";
 import webhookRouter from "./_routes/webhook.js"
-import checkoutRouter2 from "./_routes/checkout.js";
+import checkoutRouter from "./_routes/checkout.js";
 
 const app = express();
 const port = process.env.PORT || 3000;
@@ -29,14 +28,13 @@ app.use(express.urlencoded({ extended: true }));
 app.use("/api/login", loginRouter);
 app.use("/api/products", productRouter);
 app.use("/api/cart", cartRouter);
-app.use("/api/checkout", checkoutRouter);
 app.use("/api/user", userRouter);
 app.use("/api/orders", orderRouter);
 app.use("/api/currency", currencyRouter);
 app.use("/api/import", importRouter);
 app.use('/api/admin', adminRouter);
 app.use('/api/search', searchRouter);
-app.use('/api/checkout2', checkoutRouter2)
+app.use('/api/checkout', checkoutRouter)
 
 // 404 handler
 app.use((req, res) => {

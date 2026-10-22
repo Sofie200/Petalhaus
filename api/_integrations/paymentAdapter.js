@@ -32,7 +32,7 @@ const CLIENT_URL = process.env.CLIENT_URL ?? 'http://localhost:5173'
 // Only the secret key is needed to start. The webhook secret is checked in verifyWebhook(),
 // so you can test hosted and embedded before you have started `stripe listen`.
 if (!SECRET_KEY) {
-  throw new Error('Stripe is not configured. Copy .env.example to .env and fill in STRIPE_SECRET_KEY.')
+	throw new Error('Stripe is not configured. Copy .env.example to .env and fill in STRIPE_SECRET_KEY.')
 }
 
 // The secret key may create payments. It is only used here, on the server.
@@ -51,38 +51,55 @@ const stripe = new Stripe(SECRET_KEY, { timeout: 10_000 })
  * @param {CheckoutItem[]} items
  * @returns {Promise<{ sessionId: string, url: string | null }>}
  */
+
+/**
+ * Our order rows → Stripe's line_items. Stripe counts in öre: 599 kr = 59900.
+ * @param {CheckoutItem[]} items
+ */
+function toLineItems(items) {
+	return items.map((item) => ({
+		quantity: item.quantity,
+		price_data: {
+			currency: 'sek',
+			unit_amount: Math.round(Number(item.price) * 100), // round: 199.9 * 100 = 19989.999...
+			product_data: { name: item.name },
+		},
+	}))
+}
+
+/*
 export async function createHostedCheckout(orderId, items) {
   // Stripe's line_items, hardcoded here. In your shop: build them from `items` – the order's products
   // with the prices from YOUR database. One line item per product. Stripe counts in öre: 599 kr = 59900.
   console.log('[HOSTED] Order', orderId, '– items from the route:', items)
   const session = await stripe.checkout.sessions.create({
-    mode: 'payment',
-    line_items: [
-      {
-        quantity: 1,
-        price_data: { currency: 'sek', unit_amount: 59900, product_data: { name: 'Hoodie Svart' } },
-      },
-      {
-        quantity: 2,
-        price_data: { currency: 'sek', unit_amount: 19900, product_data: { name: 'T-shirt Vit' } },
-      },
-    ],
-    // Our order id follows the payment, so the webhook knows which order was paid.
-    client_reference_id: orderId,
-    // Stripe replaces {CHECKOUT_SESSION_ID} with the session's id before sending the customer back.
-    success_url: `${CLIENT_URL}/return?session_id={CHECKOUT_SESSION_ID}`,
-    cancel_url: `${CLIENT_URL}/`,
-    // TIMEOUT 2: how long the customer has to pay. WE set it here with expires_at – anything from
-    // 30 min to 24 h. Without it, Stripe's default is 24 h. Stripe keeps the clock: when the time is up,
-    // the session expires and our webhook gets checkout.session.expired.
-    // E.g. 30 min, if the shop reserves stock (the time is in seconds since 1970):
-    // expires_at: Math.floor(Date.now() / 1000) + 30 * 60,
+	mode: 'payment',
+	line_items: [
+	  {
+		quantity: 1,
+		price_data: { currency: 'sek', unit_amount: 59900, product_data: { name: 'Hoodie Svart' } },
+	  },
+	  {
+		quantity: 2,
+		price_data: { currency: 'sek', unit_amount: 19900, product_data: { name: 'T-shirt Vit' } },
+	  },
+	],
+	// Our order id follows the payment, so the webhook knows which order was paid.
+	client_reference_id: orderId,
+	// Stripe replaces {CHECKOUT_SESSION_ID} with the session's id before sending the customer back.
+	success_url: `${CLIENT_URL}/return?session_id={CHECKOUT_SESSION_ID}`,
+	cancel_url: `${CLIENT_URL}/`,
+	// TIMEOUT 2: how long the customer has to pay. WE set it here with expires_at – anything from
+	// 30 min to 24 h. Without it, Stripe's default is 24 h. Stripe keeps the clock: when the time is up,
+	// the session expires and our webhook gets checkout.session.expired.
+	// E.g. 30 min, if the shop reserves stock (the time is in seconds since 1970):
+	// expires_at: Math.floor(Date.now() / 1000) + 30 * 60,
   })
   console.log('\n[HOSTED] Checkout Session created:', session.id)
 
   // Stripe's page lives at this URL. React sends the customer there.
   return { sessionId: session.id, url: session.url }
-}
+}*/
 
 /* --- 2. EMBEDDED: the customer pays in a Stripe form inside our page --- */
 
@@ -92,33 +109,21 @@ export async function createHostedCheckout(orderId, items) {
  * @returns {Promise<{ sessionId: string, clientSecret: string | null }>}
  */
 export async function createEmbeddedCheckout(orderId, items) {
-  // Stripe's line_items, hardcoded here. In your shop: build them from `items` – the order's products
-  // with the prices from YOUR database. One line item per product. Stripe counts in öre: 599 kr = 59900.
-  const lineItems = [
-    {
-      quantity: 1,
-      price_data: { currency: 'sek', unit_amount: 59900, product_data: { name: 'Hoodie Svart' } },
-    },
-    {
-      quantity: 2,
-      price_data: { currency: 'sek', unit_amount: 19900, product_data: { name: 'T-shirt Vit' } },
-    },
-  ]
-  console.log('[EMBEDDED] Order', orderId, '– items from the route:', items)
+	// with the prices from YOUR database. One line item per product. Stripe counts in öre: 599 kr = 59900.
 
-  const session = await stripe.checkout.sessions.create({
-    mode: 'payment',
-    ui_mode: 'embedded_page', // ← the only real difference from hosted
-    line_items: lineItems,
-    client_reference_id: orderId,
-    // Embedded has no success_url/cancel_url, only a return_url.
-    return_url: `${CLIENT_URL}/return?session_id={CHECKOUT_SESSION_ID}`,
-    // TIMEOUT 2: the same as hosted – the session expires after 24 h unless you set expires_at.
-  })
-  console.log('\n[EMBEDDED] Checkout Session created:', session.id)
+	console.log('[EMBEDDED] Order', orderId, '– items from the route:', items)
 
-  // The client secret lets React show THIS session's form. It is not the secret key.
-  return { sessionId: session.id, clientSecret: session.client_secret }
+	const session = await stripe.checkout.sessions.create({
+		mode: 'payment',
+		ui_mode: 'embedded_page',
+		line_items: toLineItems(items),
+		client_reference_id: String(orderId),
+		return_url: `${CLIENT_URL}/return?session_id={CHECKOUT_SESSION_ID}`,
+	})
+	console.log('\n[EMBEDDED] Checkout Session created:', session.id)
+
+	// The client secret lets React show THIS session's form. It is not the secret key.
+	return { sessionId: session.id, clientSecret: session.client_secret }
 }
 
 /* --- 3. WEBHOOK: Stripe tells us that the payment went through --- */
@@ -133,8 +138,8 @@ export async function createEmbeddedCheckout(orderId, items) {
  * @returns {import('stripe').Stripe.Event}
  */
 export function verifyWebhook(rawBody, signature) {
-  if (!WEBHOOK_SECRET) {
-    throw new Error('STRIPE_WEBHOOK_SECRET is missing in .env. Copy the whsec_... that `stripe listen` prints.')
-  }
-  return stripe.webhooks.constructEvent(rawBody, signature, WEBHOOK_SECRET)
+	if (!WEBHOOK_SECRET) {
+		throw new Error('STRIPE_WEBHOOK_SECRET is missing in .env. Copy the whsec_... that `stripe listen` prints.')
+	}
+	return stripe.webhooks.constructEvent(rawBody, signature, WEBHOOK_SECRET)
 }
