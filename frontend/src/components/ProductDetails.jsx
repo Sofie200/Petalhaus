@@ -14,12 +14,6 @@ export default function ProductDetails() {
     const { formatPrice } = useCurrency();
     const FALLBACK_IMAGE = "/images/dummy.png";
 
-    let quantity = "";
-
-    if(!loading){
-        quantity = getItemQuantity(product.id);
-    }
-
     if (loading) return <Loading />;
 
     if (error) return <ErrorMessage message={error} />;
@@ -27,6 +21,11 @@ export default function ProductDetails() {
     if (!product) {
         return <p>Produkten hittades ej.</p>;
     }
+
+    const quantity = getItemQuantity(product.id);
+    const stock = Number(product.stock) || 0;
+    const outOfStock = stock <= 0;
+    const maxReached = quantity >= stock;
 
     return (
         <section>
@@ -52,6 +51,7 @@ export default function ProductDetails() {
             <div className="product-details">
                 <h2>{product.name}</h2>
                 <p>{product.description}</p>
+                <p>{outOfStock ? "" : `Lagersaldo: ${stock}`}</p>
                 <div className="price">
                     {product.discount > 0 ? (
                         <>
@@ -61,18 +61,27 @@ export default function ProductDetails() {
                             &nbsp;<s className="original">{formatPrice(Math.round(product.price))}</s>
                         </>
                     ) : (
-                            <span>{formatPrice(Math.round(product.price))}</span>
+                        <span>{formatPrice(Math.round(product.price))}</span>
                     )}
                 </div>
                 {quantity === 0 ? (
-                    <button onClick={() => addToCart(product)}>
-                        Lägg i varukorgen
+                    <button
+                        onClick={() => addToCart(product)}
+                        disabled={outOfStock}
+                    >
+                        {outOfStock ? "Slut i lager" : "Lägg i varukorgen"}
                     </button>
                 ) : (
                     <div className="change-quantity">
                         <button onClick={() => updateItemQuantity(product.id, quantity - 1)}>-</button>
                         <span className="quantity">{quantity}</span>
-                        <button onClick={() => updateItemQuantity(product.id, quantity + 1)}>+</button>
+                        <button
+                            onClick={() => updateItemQuantity(product.id, quantity + 1)}
+                            disabled={maxReached}
+                            title={maxReached ? "Inga fler i lager" : undefined}
+                        >
+                            +
+                        </button>
                     </div>
                 )}
             </div>

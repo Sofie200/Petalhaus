@@ -9,8 +9,8 @@ import currencyRouter from "./_routes/currency-routes.js";
 import importRouter from "./_routes/import-routes.js";
 import adminRouter from "./_routes/admin-routes.js";
 import searchRouter from "./_routes/search-routes.js";
-import webhookRouter from "./_routes/webhook.js"
-import checkoutRouter from "./_routes/checkout.js";
+import webhookRouter from "./_routes/webhook-routes.js"
+import checkoutRouter from "./_routes/checkout-routes.js";
 
 const app = express();
 const port = process.env.PORT || 3000;

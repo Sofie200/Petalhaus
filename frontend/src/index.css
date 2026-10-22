@@ -286,6 +286,11 @@ button:hover,
     box-shadow: var(--shadow-medium);
 }
 
+button:disabled {
+    opacity: 0.5;
+    cursor: not-allowed;
+}
+
 /* Manage button */
 .btn-manage {
     background: var(--color-accent);

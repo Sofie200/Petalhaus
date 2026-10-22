@@ -108,7 +108,7 @@ export async function createHostedCheckout(orderId, items) {
  * @param {CheckoutItem[]} items
  * @returns {Promise<{ sessionId: string, clientSecret: string | null }>}
  */
-export async function createEmbeddedCheckout(orderId, items) {
+export async function createEmbeddedCheckout(orderId, items, customer={}) {
 	// with the prices from YOUR database. One line item per product. Stripe counts in öre: 599 kr = 59900.
 
 	console.log('[EMBEDDED] Order', orderId, '– items from the route:', items)
@@ -119,6 +119,16 @@ export async function createEmbeddedCheckout(orderId, items) {
 		line_items: toLineItems(items),
 		client_reference_id: String(orderId),
 		return_url: `${CLIENT_URL}/return?session_id={CHECKOUT_SESSION_ID}`,
+
+		// Prefills the email field in the form
+		customer_email: customer.email,
+
+		// Shows up on the payment in the Stripe Dashboard
+		metadata: { user_id: String(customer.userId ?? '') },
+
+		// Optional: let Stripe collect a delivery address and phone number
+		shipping_address_collection: { allowed_countries: ['SE'] },
+		phone_number_collection: { enabled: true },
 	})
 	console.log('\n[EMBEDDED] Checkout Session created:', session.id)
 

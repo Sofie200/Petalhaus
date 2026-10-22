@@ -15,6 +15,7 @@ import Import from './pages/admin/Import';
 import Checkout from './pages/Checkout';
 import Profile from './pages/Profile';
 import ManageOrders from './pages/admin/ManageOrders';
+import ReturnPage from './components/ReturnPage';
 import Unauthorized from './pages/Unauthorized'
 import ProtectedRoute from './components/admin/ProtectedRoute';
 
@@ -47,6 +48,7 @@ function App() {
 								<Route path="/product/:id" element={<Product />} />
 								<Route path="/cart" element={<Cart />} />
 								<Route path="/checkout" element={<Checkout />} />
+								<Route path="/return" element={<ReturnPage />} />
 								<Route path="/profile" element={<ProtectedRoute><Profile /></ProtectedRoute>} />
 								<Route path="/unauthorized" element={<Unauthorized />} />
 								<Route path="/admin/add-product/" element={<ProtectedRoute role={"admin"}><AddProduct /></ProtectedRoute>} />
