@@ -19,22 +19,24 @@ export async function upsertProducts(products) {
     if (candidates.length === 0) return { inserted: [], updated: [], skipped };
 
     const { rows } = await pool.query(
-        `INSERT INTO product (ean, name, category, price, updated)
-         SELECT * FROM unnest($1::text[], $2::text[], $3::text[], $4::numeric[], $5::date[])
-         ON CONFLICT (ean) DO UPDATE SET
-             name     = EXCLUDED.name,
-             category = EXCLUDED.category,
-             price    = EXCLUDED.price,
-             updated  = EXCLUDED.updated
-         WHERE (product.name, product.category, product.price, product.updated)
-               IS DISTINCT FROM
-               (EXCLUDED.name, EXCLUDED.category, EXCLUDED.price, EXCLUDED.updated)
-         RETURNING ean, (xmax = 0) AS inserted`,
+        `INSERT INTO product (ean, name, category, price, stock, updated)
+     SELECT * FROM unnest($1::text[], $2::text[], $3::text[], $4::numeric[], $5::int[], $6::date[])
+     ON CONFLICT (ean) DO UPDATE SET
+         name     = EXCLUDED.name,
+         category = EXCLUDED.category,
+         price    = EXCLUDED.price,
+         stock    = EXCLUDED.stock,
+         updated  = EXCLUDED.updated
+     WHERE (product.name, product.category, product.price, product.stock, product.updated)
+           IS DISTINCT FROM
+           (EXCLUDED.name, EXCLUDED.category, EXCLUDED.price, EXCLUDED.stock, EXCLUDED.updated)
+     RETURNING ean, (xmax = 0) AS inserted`,
         [
             candidates.map((p) => p.ean),
             candidates.map((p) => p.name),
             candidates.map((p) => p.category),
             candidates.map((p) => p.price),
+            candidates.map((p) => p.stock),
             candidates.map((p) => p.updated),
         ]
     );

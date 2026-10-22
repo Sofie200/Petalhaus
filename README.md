@@ -18,7 +18,7 @@ https://petalhaus-v2.vercel.app/
 
 **EAN** - Fanns ej med i min datamodell. Jag skapade en ny kolumn för att implementera denna labb.
 
-**Lagersaldo** - Finns ej med i min datamodell. Jag anser att jag inte behöver den i nuläget.
+**Lagersaldo** - Fanns ej med i min datamodell. Jag skapade en ny kolumn för att implementera Labb 3.
 
 **Varianter** - Finns ej med i min datamodell. Jag anser att jag inte behöver den i nuläget.
 
