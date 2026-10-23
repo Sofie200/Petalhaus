@@ -4,6 +4,11 @@ import useProduct from "../../hooks/useProduct";
 import ErrorMessage from "../ErrorMessage";
 import Loading from "../Loading";
 
+// Shown when the product was saved in the database, but Algolia didn't answer
+const SEARCH_WARNING =
+    "\n\nObs: sökindexet kunde inte uppdateras, så ändringen syns inte i sökningen än. " +
+    "Gå till Sökindex på adminsidan och tryck på \"Indexera om alla produkter\".";
+
 export default function ManageProductForm({ type }) {
 
     const API = import.meta.env.VITE_API_URL;
@@ -14,20 +19,22 @@ export default function ManageProductForm({ type }) {
     const [form, setForm] = useState({
         name: "",
         description: "",
+        category: "",
         price: 0,
         discount: 0,
         image: ""
     });
 
     useEffect(() => {
-        
+
         if (product) {
             setForm({
-                name: product.name,
-                description: product.description,
+                name: product.name ?? "",
+                description: product.description ?? "",
+                category: product.category ?? "",
                 price: product.price,
-                discount: product.discount,
-                image: product.image
+                discount: product.discount ?? 0,
+                image: product.image ?? ""
             });
         }
     }, [product]);
@@ -37,6 +44,11 @@ export default function ManageProductForm({ type }) {
             ...form,
             [e.target.name]: e.target.value
         });
+    }
+
+    // "Saved!" – plus a warning if the search index wasn't updated
+    function savedMessage(text, data) {
+        return data?.searchIndexed === false ? text + SEARCH_WARNING : text;
     }
 
     async function handleSubmit(e) {
@@ -55,7 +67,9 @@ export default function ManageProductForm({ type }) {
                     throw new Error("Kunde inte uppdatera produkten");
                 }
 
-                alert("Produkten uppdaterades!");
+                const data = await res.json();
+
+                alert(savedMessage("Produkten uppdaterades!", data));
 
                 navigate(`/product/${product.id}`);
 
@@ -77,7 +91,7 @@ export default function ManageProductForm({ type }) {
 
                 const data = await res.json();
 
-                alert("Produkten tillagd!");
+                alert(savedMessage("Produkten tillagd!", data));
 
                 navigate(`/product/${data.id}`);
 
@@ -96,14 +110,21 @@ export default function ManageProductForm({ type }) {
         try {
             const res = await fetch(`${API}/products/${product.id}`, {
                 method: "DELETE",
-                headers: { "Content-Type": "application/json", "Authorization": `Bearer ${token}` }
+                headers: { "Authorization": `Bearer ${token}` }
             });
 
             if (!res.ok) {
                 throw new Error("Kunde inte radera produkten");
             }
 
-            alert("Produkten raderades!");
+            const data = await res.json();
+
+            alert(
+                data?.searchIndexed === false
+                    ? "Produkten raderades, men den kunde inte tas bort ur sökindexet och syns därför fortfarande i sökningen. " +
+                    "Gå till Sökindex på adminsidan och tryck på \"Indexera om alla produkter\"."
+                    : "Produkten raderades!"
+            );
 
             navigate("/");
 
@@ -135,6 +156,13 @@ export default function ManageProductForm({ type }) {
             <textarea
                 name="description"
                 value={form.description}
+                onChange={handleChange}
+            />
+
+            <label>Kategori</label>
+            <input
+                name="category"
+                value={form.category}
                 onChange={handleChange}
             />
 
