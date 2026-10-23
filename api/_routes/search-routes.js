@@ -6,7 +6,7 @@ const router = Router()
 
 // Here we validate data from the USER before sending it on to another system.
 const SearchQuery = z.object({
-    q: z.string().max(100).default(''),
+    q: z.string().trim().max(100).default(''),
     page: z.coerce.number().int().min(1).default(1),
     pageSize: z.coerce.number().int().min(1).max(50).default(10),
 });

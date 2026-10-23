@@ -25,3 +25,9 @@
     font-size: 16px;
     color:inherit;
 }
+
+.search-count{
+    text-align: right;
+    color: var(--color-muted);
+    margin: 0 0 5px;
+}

@@ -1,8 +1,6 @@
 import { Router } from 'express'
 import { indexProducts } from '../_integrations/searchAdapter.js'
 import { getAllProducts } from '../_db/getAllProducts.js';
-import { verifyToken } from "../_middleware/verifyToken.js";
-import { requireAdmin } from "../_middleware/requireAdmin.js";
 
 const router = Router()
 

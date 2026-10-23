@@ -179,7 +179,7 @@ section {
     color: var(--color-bg);
     padding: 10px 14px;
     border-radius: var(--radius-md);
-    margin-bottom: 40px;
+    margin-bottom: 20px;
     box-shadow: var(--shadow-soft);
 }
 
