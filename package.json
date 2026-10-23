@@ -23,6 +23,7 @@
     "fast-xml-parser": "^5.11.2",
     "globals": "^17.11.0",
     "jsonwebtoken": "^9.0.3",
+    "multer": "^2.5.0",
     "nodemon": "^1.14.10",
     "pg": "^8.21.0",
     "stripe": "^23.0.0",
