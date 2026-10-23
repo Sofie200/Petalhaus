@@ -11,6 +11,7 @@ import adminRouter from "./_routes/admin-routes.js";
 import searchRouter from "./_routes/search-routes.js";
 import webhookRouter from "./_routes/webhook-routes.js"
 import checkoutRouter from "./_routes/checkout-routes.js";
+import imageRouter from "./_routes/image-routes.js";
 
 const app = express();
 const port = process.env.PORT || 3000;
@@ -34,7 +35,8 @@ app.use("/api/currency", currencyRouter);
 app.use("/api/import", importRouter);
 app.use('/api/admin', adminRouter);
 app.use('/api/search', searchRouter);
-app.use('/api/checkout', checkoutRouter)
+app.use('/api/checkout', checkoutRouter);
+app.use('/api/image', imageRouter);
 
 // 404 handler
 app.use((req, res) => {
