@@ -21,7 +21,7 @@ const Cart = z.object({
 class CartError extends Error { }
 
 const unitPrice = (p) =>
-	Math.round(Number(p.price) - Number(p.discount ?? 0));
+	Math.round((Number(p.price) - Number(p.discount ?? 0)) * 100) / 100
 
 // The cart → a pending order with OUR prices, in one transaction
 async function createOrder(userId, cart) {
@@ -34,7 +34,13 @@ async function createOrder(userId, cart) {
 			[cart.items.map((i) => i.id)]
 		)
 
-		const items = cart.items.map(({ id, quantity }) => {
+		// Merge duplicate rows, so the stock check sees the total quantity per product
+		const quantities = new Map()
+		for (const { id, quantity } of cart.items) {
+			quantities.set(id, (quantities.get(id) ?? 0) + quantity)
+		}
+
+		const items = [...quantities].map(([id, quantity]) => {
 			const p = products.find((p) => p.id === id)
 			if (!p) throw new CartError(`Produkten ${id} finns inte`)
 			if (p.stock < quantity) throw new CartError(`${p.name} finns inte i lager`)
