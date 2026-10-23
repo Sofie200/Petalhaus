@@ -23,18 +23,39 @@ for (const [format, getProducts] of Object.entries(SOURCES)) {
     });
 
     // Importera: hämta, validera och spara i databasen
+    // Importera: hämta, validera och spara i databasen
     importRouter.post(`/${format}`, verifyToken, requireAdmin, async (req, res, next) => {
+        // 1. Hämta från leverantören – ett fel här är leverantörens, inte vårt
+        let products, invalid;
         try {
-            const { products, skipped: invalid } = await getProducts();
-            const { inserted, updated, skipped } = await upsertProducts(products);
+            ({ products, skipped: invalid } = await getProducts());
+        } catch (err) {
+            console.error(`[IMPORT] Could not fetch ${format} from supplier:`, err);
+            return res.status(502).json({
+                error: "Leverantören svarar inte just nu. Försök igen om en stund.",
+            });
+        }
+
+        // 2. Spara i databasen (och synka till Algolia)
+        try {
+            const { inserted, updated, unchanged, skipped, indexed, indexError } =
+                await upsertProducts(products);
             const allSkipped = [...invalid, ...skipped];
 
             res.json({
                 format,
-                counts: { inserted: inserted.length, updated: updated.length, skipped: allSkipped.length },
+                counts: {
+                    inserted: inserted.length,
+                    updated: updated.length,
+                    unchanged: unchanged.length,
+                    skipped: allSkipped.length,
+                },
                 inserted,
                 updated,
+                unchanged,
                 skipped: allSkipped,
+                indexed,
+                indexError,
             });
         } catch (err) {
             next(err);

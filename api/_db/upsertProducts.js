@@ -1,6 +1,8 @@
 import { pool } from "./pool.js";
 import { indexProducts } from "../_integrations/searchAdapter.js";
 
+// Upsert on EAN: an existing product is updated, a new one is created.
+// The supplier's article number (sku, e.g. LEV-1001) is NOT stored – it is only shown in the report.
 export async function upsertProducts(products) {
     const skipped = [];
 
@@ -10,7 +12,12 @@ export async function upsertProducts(products) {
     const candidates = [];
     for (const p of products) {
         if (seen.has(p.ean)) {
-            skipped.push({ row: p.row, ean: p.ean, reason: `Dubblett av rad ${seen.get(p.ean)}` });
+            skipped.push({
+                row: p.row,
+                sku: p.sku,
+                ean: p.ean,
+                reason: `Dubblett av rad ${seen.get(p.ean)}`,
+            });
             continue;
         }
         seen.set(p.ean, p.row);
@@ -18,7 +25,7 @@ export async function upsertProducts(products) {
     }
 
     if (candidates.length === 0) {
-        return { inserted: [], updated: [], skipped, indexed: 0, indexError: null };
+        return { inserted: [], updated: [], unchanged: [], skipped, indexed: 0, indexError: null };
     }
 
     const { rows } = await pool.query(
@@ -44,14 +51,19 @@ export async function upsertProducts(products) {
         ]
     );
 
-    const inserted = rows.filter((r) => r.inserted).map((r) => r.ean);
-    const updated = rows.filter((r) => !r.inserted).map((r) => r.ean);
+    // The database only knows EAN – look up the article number from the import for the report
+    const skuByEan = new Map(candidates.map((p) => [p.ean, p.sku]));
+    const toReport = (ean) => ({ sku: skuByEan.get(ean) ?? null, ean });
 
-    // Det som inte kom tillbaka i RETURNING fanns redan och var identiskt
+    const inserted = rows.filter((r) => r.inserted).map((r) => toReport(r.ean));
+    const updated = rows.filter((r) => !r.inserted).map((r) => toReport(r.ean));
+
+    // Det som inte kom tillbaka i RETURNING fanns redan och var identiskt.
+    // Egen lista, så att en andra import visar "oförändrade" och inte "överhoppade".
     const touched = new Set(rows.map((r) => r.ean));
-    for (const p of candidates) {
-        if (!touched.has(p.ean)) skipped.push({ row: p.row, ean: p.ean, reason: "Oförändrad" });
-    }
+    const unchanged = candidates
+        .filter((p) => !touched.has(p.ean))
+        .map((p) => toReport(p.ean));
 
     // Synka bara nya och ändrade produkter till Algolia.
     // Databasen är redan uppdaterad, så ett Algolia-fel ska inte fälla importen.
@@ -66,5 +78,5 @@ export async function upsertProducts(products) {
         }
     }
 
-    return { inserted, updated, skipped, indexed, indexError };
+    return { inserted, updated, unchanged, skipped, indexed, indexError };
 }

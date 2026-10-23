@@ -13,8 +13,11 @@ const HEADERS = { "X-Api-Key": process.env.IMPORT_API_KEY ?? "" };
 const TIMEOUT_MS = 10000; // filerna kan vara större än ett vanligt JSON-svar
 
 // Delade regler, så att CSV och XML alltid kontrolleras likadant
+const sku = z.string().trim().min(1, "Artikelnummer saknas");
 const ean = z.string().regex(/^\d{8}$|^\d{13}$/, "EAN ska vara 8 eller 13 siffror");
 const price = z.string().regex(/^\d+([.,]\d{1,2})?$/, 'Pris ska se ut som "599", "599,00" eller "599.00"');
+
+// Tomt lagersaldo (null, "" eller texten "null") blir 0. "12" och "12,0" blir 12.
 const stock = z
   .string()
   .regex(/^(\d+([.,]0+)?|null)?$/, "Lagersaldo ska vara ett heltal eller tomt")
@@ -22,6 +25,7 @@ const stock = z
   .transform((v) => (!v || v === "null" ? 0 : parseInt(v, 10)));
 
 const CsvRow = z.object({
+  artNr: sku,
   ean,
   benamning: z.string().min(1),
   kategori: z.string().min(1),
@@ -30,7 +34,9 @@ const CsvRow = z.object({
   uppdaterad: z.iso.date(),
 });
 
+// Samma fält, men artNr är ett attribut ("@_artNr") och <pris> har ett attribut, så texten ligger i "#text"
 const XmlRow = z.object({
+  "@_artNr": sku,
   ean,
   benamning: z.string().min(1),
   kategori: z.string().min(1),
@@ -56,7 +62,12 @@ function validateRows(rows, schema, label) {
       const reason = result.error.issues
         .map((i) => `${i.path.join(".") || "rad"}: ${i.message}`)
         .join("; ");
-      skipped.push({ row: index + 1, ean: raw?.ean ?? null, reason });
+      skipped.push({
+        row: index + 1,
+        sku: raw?.artNr ?? raw?.["@_artNr"] ?? null, // artikelnumret, t.ex. LEV-1037
+        ean: raw?.ean ?? null,
+        reason,
+      });
       console.warn(`[${label}] Skipping item ${index + 1}:`, z.prettifyError(result.error));
     }
   }
@@ -103,11 +114,12 @@ export async function getCsvProducts() {
   // 6. Supplier's fields → our fields, text → number
   const products = valid.map((r) => ({
     row: r.row,
+    sku: r.artNr,
     ean: r.ean,
     name: r.benamning,
     category: r.kategori,
     price: toNumber(r.pris),
-    stock: r.lagersaldo,
+    stock: r.lagersaldo, // already a number – the stock rule converts it
     updated: r.uppdaterad,
   }));
 
@@ -151,15 +163,15 @@ export async function getXmlProducts() {
   const { valid, skipped } = validateRows(items, XmlRow, "XML");
 
   // 5. Supplier's fields → our fields
-  // XML
   const products = valid.map((p) => ({
     row: p.row,
+    sku: p["@_artNr"],
     ean: p.ean,
     name: p.benamning,
     category: p.kategori,
     price: toNumber(p.pris["#text"]),
-    stock: p.lagersaldo,
-    updated: p.uppdaterad.slice(0, 10),
+    stock: p.lagersaldo, // already a number – the stock rule converts it
+    updated: p.uppdaterad.slice(0, 10), // "2026-09-01T08:00:00.000Z" → "2026-09-01"
   }));
   console.log("[XML] 5. Our model:", products);
 

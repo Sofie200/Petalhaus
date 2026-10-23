@@ -1,25 +1,38 @@
 import useImport from "../../hooks/useImport";
 import "./Import.css";
 
-const EanList = ({ title, eans }) => (
+// Nya, uppdaterade och oförändrade: [{ sku, ean }]
+const ProductList = ({ title, items = [] }) => (
     <section className="import-table-wrapper">
-        <h3>{title} ({eans.length})</h3>
-        {eans.length === 0 ? ( "" ) : (
-        <table className="import-table">
-            <thead>
-                <tr><th>EAN</th></tr>
-            </thead>
-            <tbody>
-                   { eans.map((ean) => (
-                        <tr key={ean}><td>{ean}</td></tr>
-                   ))}
-            </tbody>
-        </table>)}
+        <h3>{title} ({items.length})</h3>
+        {items.length > 0 && (
+            <table className="import-table">
+                <thead>
+                    <tr>
+                        <th>Artikelnr</th>
+                        <th>EAN</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {items.map((item, i) => (
+                        <tr key={`${item.ean}-${i}`}>
+                            <td>{item.sku ?? "–"}</td>
+                            <td>{item.ean ?? "–"}</td>
+                        </tr>
+                    ))}
+                </tbody>
+            </table>
+        )}
     </section>
 );
 
 const Import = () => {
     const { runImport, result, loading, error } = useImport();
+
+    const inserted = result?.inserted ?? [];
+    const updated = result?.updated ?? [];
+    const unchanged = result?.unchanged ?? [];
+    const skipped = result?.skipped ?? [];
 
     return (
         <div className="import-wrapper">
@@ -39,24 +52,36 @@ const Import = () => {
                 <div>
                     <h2>Resultat ({result.format.toUpperCase()})</h2>
                     <p>
-                        {result.counts.inserted} nya · {result.counts.updated} uppdaterade ·{" "}
-                        {result.counts.skipped} överhoppade
+                        {inserted.length} nya · {updated.length} uppdaterade ·{" "}
+                        {unchanged.length} oförändrade · {skipped.length} överhoppade
                     </p>
 
-                    <EanList title="Nya" eans={result.inserted} />
-                    <EanList title="Uppdaterade" eans={result.updated} />
+                    {/* Produkterna är sparade, men sökningen visar inte ändringarna */}
+                    {result.indexError && (
+                        <p role="alert" style={{ color: "crimson" }}>{result.indexError}</p>
+                    )}
+
+                    <ProductList title="Nya" items={inserted} />
+                    <ProductList title="Uppdaterade" items={updated} />
+                    <ProductList title="Oförändrade" items={unchanged} />
 
                     <section className="import-table-wrapper">
-                        <h3>Överhoppade ({result.skipped.length})</h3>
-                        {result.skipped.length === 0 ? <p></p> : (
+                        <h3>Överhoppade ({skipped.length})</h3>
+                        {skipped.length > 0 && (
                             <table className="import-table">
                                 <thead>
-                                    <tr><th>Rad</th><th>EAN</th><th>Anledning</th></tr>
+                                    <tr>
+                                        <th>Rad</th>
+                                        <th>Artikelnr</th>
+                                        <th>EAN</th>
+                                        <th>Anledning</th>
+                                    </tr>
                                 </thead>
                                 <tbody>
-                                    {result.skipped.map((s, i) => (
-                                        <tr key={`${s.ean}-${i}`}>
+                                    {skipped.map((s, i) => (
+                                        <tr key={`${s.sku ?? s.ean}-${i}`}>
                                             <td>{s.row ?? "–"}</td>
+                                            <td>{s.sku ?? "–"}</td>
                                             <td>{s.ean ?? "–"}</td>
                                             <td>{s.reason}</td>
                                         </tr>
