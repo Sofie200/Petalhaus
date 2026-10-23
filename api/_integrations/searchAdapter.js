@@ -12,26 +12,39 @@ const adminClient = algoliasearch(APP_ID, ADMIN_KEY)
 // How a product looks in Algolia: the same fields, but the id must be called objectID.
 // { objectID, name, description, price, discount, category, image, ean, updated }
 
-export async function indexProducts(products) {
-    // 1. Our model → Algolia's model. id becomes objectID.
-    const records = []
-    for (const product of products) {
-        records.push({
-            objectID: String(product.id),
-            name: product.name,
-            description: product.description,
-            price: Number(product.price),
-            discount: product.discount === null ? null : Number(product.discount),
-            category: product.category,
-            image: product.image,
-            ean: product.ean,
-            updated: product.updated,
-        })
+// Our model → Algolia's model. id becomes objectID.
+// Used by both indexProducts and replaceAllProducts, so the records always look the same.
+function toSearchRecord(product) {
+    return {
+        objectID: String(product.id),
+        name: product.name,
+        description: product.description,
+        price: Number(product.price),
+        discount: product.discount === null ? null : Number(product.discount),
+        category: product.category,
+        image: product.image,
+        ean: product.ean,
+        updated: product.updated,
     }
+}
 
-    // 2. Send them to Algolia. Same objectID again → the product is updated, not duplicated (upsert).
+export async function indexProducts(products) {
+    const records = products.map(toSearchRecord)
+
+    // Same objectID again → the product is updated, not duplicated (upsert).
     // waitForTasks: wait until Algolia is done, so a search right after finds the products.
     await adminClient.saveObjects({ indexName: INDEX_NAME, objects: records, waitForTasks: true })
+
+    return records.length
+}
+
+// Reindex the entire DB: Algolia builds a temporary index with exactly these records and then swaps it in.
+// Records that are NOT in the list (e.g. products deleted directly in the DB) disappear.
+// The index settings (searchable attributes, ranking, synonyms) are copied over.
+export async function replaceAllProducts(products) {
+    const records = products.map(toSearchRecord)
+
+    await adminClient.replaceAllObjects({ indexName: INDEX_NAME, objects: records })
 
     return records.length
 }

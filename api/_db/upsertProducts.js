@@ -1,4 +1,5 @@
 import { pool } from "./pool.js";
+import { indexProducts } from "../_integrations/searchAdapter.js";
 
 export async function upsertProducts(products) {
     const skipped = [];
@@ -16,21 +17,23 @@ export async function upsertProducts(products) {
         candidates.push(p);
     }
 
-    if (candidates.length === 0) return { inserted: [], updated: [], skipped };
+    if (candidates.length === 0) {
+        return { inserted: [], updated: [], skipped, indexed: 0, indexError: null };
+    }
 
     const { rows } = await pool.query(
         `INSERT INTO product (ean, name, category, price, stock, updated)
-     SELECT * FROM unnest($1::text[], $2::text[], $3::text[], $4::numeric[], $5::int[], $6::date[])
-     ON CONFLICT (ean) DO UPDATE SET
-         name     = EXCLUDED.name,
-         category = EXCLUDED.category,
-         price    = EXCLUDED.price,
-         stock    = EXCLUDED.stock,
-         updated  = EXCLUDED.updated
-     WHERE (product.name, product.category, product.price, product.stock, product.updated)
-           IS DISTINCT FROM
-           (EXCLUDED.name, EXCLUDED.category, EXCLUDED.price, EXCLUDED.stock, EXCLUDED.updated)
-     RETURNING ean, (xmax = 0) AS inserted`,
+         SELECT * FROM unnest($1::text[], $2::text[], $3::text[], $4::numeric[], $5::int[], $6::date[])
+         ON CONFLICT (ean) DO UPDATE SET
+             name     = EXCLUDED.name,
+             category = EXCLUDED.category,
+             price    = EXCLUDED.price,
+             stock    = EXCLUDED.stock,
+             updated  = EXCLUDED.updated
+         WHERE (product.name, product.category, product.price, product.stock, product.updated)
+               IS DISTINCT FROM
+               (EXCLUDED.name, EXCLUDED.category, EXCLUDED.price, EXCLUDED.stock, EXCLUDED.updated)
+         RETURNING product.*, (xmax = 0) AS inserted`,
         [
             candidates.map((p) => p.ean),
             candidates.map((p) => p.name),
@@ -50,5 +53,18 @@ export async function upsertProducts(products) {
         if (!touched.has(p.ean)) skipped.push({ row: p.row, ean: p.ean, reason: "Oförändrad" });
     }
 
-    return { inserted, updated, skipped };
+    // Synka bara nya och ändrade produkter till Algolia.
+    // Databasen är redan uppdaterad, så ett Algolia-fel ska inte fälla importen.
+    let indexed = 0;
+    let indexError = null;
+    if (rows.length > 0) {
+        try {
+            indexed = await indexProducts(rows);
+        } catch (err) {
+            console.error("[IMPORT] Algolia sync failed:", err);
+            indexError = "Produkterna sparades men kunde inte indexeras för sökningen.";
+        }
+    }
+
+    return { inserted, updated, skipped, indexed, indexError };
 }

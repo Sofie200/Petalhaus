@@ -18,6 +18,7 @@ import ManageOrders from './pages/admin/ManageOrders';
 import ReturnPage from './components/ReturnPage';
 import Unauthorized from './pages/Unauthorized'
 import ProtectedRoute from './components/admin/ProtectedRoute';
+import IndexDB from './pages/admin/IndexDB';
 
 function App() {
 	const [rates, setRates] = useState(0);
@@ -53,7 +54,9 @@ function App() {
 								<Route path="/unauthorized" element={<Unauthorized />} />
 								<Route path="/admin/add-product/" element={<ProtectedRoute role={"admin"}><AddProduct /></ProtectedRoute>} />
 								<Route path="/admin/manage-product/:id" element={<ProtectedRoute role={"admin"}><ManageProduct /></ProtectedRoute>} />
+								<Route path="/admin/manage-orders/" element={<ProtectedRoute role={"admin"}><ManageOrders /></ProtectedRoute>} />
 								<Route path="/admin/import" element={<ProtectedRoute role={"admin"}><Import /></ProtectedRoute>} />
+								<Route path="/admin/index-db" element={<ProtectedRoute role={"admin"}><IndexDB /></ProtectedRoute>} />
 							</Routes>
 						</div>
 					</main>
