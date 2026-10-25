@@ -1,0 +1,45 @@
+/* Wraps the thumbnail tightly, so the button sits in the image's corner */
+.image-preview {
+    position: relative;
+    align-self: flex-start;
+    /* don't stretch in the flex/grid form */
+    width: fit-content;
+    margin-bottom: 0.5rem;
+}
+
+.image-preview img {
+    display: block;
+    max-width: 200px;
+    max-height: 200px;
+    width: auto;
+    height: auto;
+    object-fit: contain;
+}
+
+.image-preview__remove {
+    position: absolute;
+    top: 0.4rem;
+    right: 0.4rem;
+    width: 2rem;
+    height: 2rem;
+    padding: 0;
+    border: 0;
+    border-radius: 50%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    background: var(--color-secondary);
+    color: #fff;
+    cursor: pointer;
+    transition: background-color 0.2s ease;
+}
+
+.image-preview__remove:hover,
+.image-preview__remove:focus-visible {
+    background: #b04141;
+    color: #fff;
+}
+
+.image-preview__remove .material-symbols-outlined {
+    font-size: 1.2rem;
+}

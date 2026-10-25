@@ -1,8 +1,9 @@
-import { useState, useEffect } from "react"
+import { useState, useEffect, useRef } from "react"
 import { useNavigate } from "react-router-dom";
 import useProduct from "../../hooks/useProduct";
 import ErrorMessage from "../ErrorMessage";
 import Loading from "../Loading";
+import "./ManageProductForm.css";
 
 // Shown when the product was saved in the database, but Algolia didn't answer
 const SEARCH_WARNING =
@@ -20,6 +21,7 @@ export default function ManageProductForm({ type }) {
     const token = localStorage.getItem("token");
     const navigate = useNavigate();
     const { product, loading, error } = useProduct();
+    const fileInputRef = useRef(null);
 
     const [form, setForm] = useState({
         name: "",
@@ -201,6 +203,14 @@ export default function ManageProductForm({ type }) {
         }
     }
 
+    // Clears the picked file – nothing has been uploaded, so the server isn't involved
+    function clearSelectedImage() {
+        setImageFile(null);
+        setPreviewUrl(null); // the effect above frees the old preview's memory
+        setImageError(null);
+        if (fileInputRef.current) fileInputRef.current.value = "";
+    }
+
     async function handleDelete() {
         const confirmed = window.confirm("Är du säker på att du vill radera denna produkt?");
 
@@ -284,28 +294,41 @@ export default function ManageProductForm({ type }) {
                 onChange={handleChange}
             />
 
-            <label htmlFor="image">Bild (JPG eller PNG, max 4 MB)</label>
+            <label htmlFor="image">
+                Bild (JPG eller PNG, max 4 MB)
+                {imageFile && <span className="fineprint"><br />Bilden laddas upp när du sparar.</span>}
+            </label>
             {shownImage && (
-                <img
-                    src={shownImage}
-                    alt={previewUrl ? "Förhandsvisning av ny bild" : `Bild på ${form.name}`}
-                    style={{ maxWidth: "200px", display: "block", marginBottom: "0.5rem" }}
-                />
+                <div className="image-preview">
+                    <img
+                        src={shownImage}
+                        alt={previewUrl ? "Förhandsvisning av ny bild" : `Bild på ${form.name}`}
+                    />
+
+                    {(imageFile || (type === "edit" && form.image)) && (
+                        <button
+                            type="button"
+                            className="image-preview__remove"
+                            onClick={imageFile ? clearSelectedImage : handleRemoveImage}
+                            aria-label={imageFile ? "Ångra vald bild" : "Ta bort bilden"}
+                            title={imageFile ? "Ångra vald bild" : "Ta bort bilden"}
+                        >
+                            <span className="material-symbols-outlined" aria-hidden="true">close</span>
+                        </button>
+                    )}
+                </div>
             )}
+
             <input
                 id="image"
+                ref={fileInputRef}
                 type="file"
                 accept="image/jpeg,image/png"
                 onChange={handleImageChange}
             />
-            {imageFile && <p>Bilden laddas upp när du sparar.</p>}
+
             {imageError && <p role="alert" style={{ color: "crimson" }}>{imageError}</p>}
 
-            {type === "edit" && form.image && !imageFile && (
-                <button type="button" className="btn" onClick={handleRemoveImage}>
-                    Ta bort bilden
-                </button>
-            )}
 
             <div className="buttons">
                 <button type="submit" disabled={saving}>

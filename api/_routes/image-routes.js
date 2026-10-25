@@ -75,12 +75,12 @@ router.post('/upload/:id', receiveImage, async (req, res, next) => {
 	// 2. The product must exist, and we need its OLD image path to delete it afterwards
 	let oldImagePath
 	try {
-		const { rows: [product] } = await pool.query('SELECT id, image FROM product WHERE id = $1', [id])
+		const { rows: [product] } = await pool.query('SELECT id, image_path FROM product WHERE id = $1', [id])
 		if (!product) {
 			res.status(404).json({ error: 'Produkten finns inte' })
 			return
 		}
-		oldImagePath = product.image
+		oldImagePath = product.image_path;
 	} catch (err) {
 		return next(err)
 	}
@@ -140,7 +140,7 @@ router.delete('/delete/:id', async (req, res, next) => {
 	//    so an admin can't delete any file in the bucket by sending another path.
 	let current
 	try {
-		const { rows } = await pool.query('SELECT id, image, image FROM product WHERE id = $1', [id])
+		const { rows } = await pool.query('SELECT id, image, image_path FROM product WHERE id = $1', [id])
 		current = rows[0]
 	} catch (err) {
 		return next(err)
@@ -150,16 +150,16 @@ router.delete('/delete/:id', async (req, res, next) => {
 		res.status(404).json({ error: 'Produkten finns inte' })
 		return
 	}
-	if (!current.image && !current.image) {
+	if (!current.image && !current.image_path) {
 		res.status(404).json({ error: 'Produkten har ingen bild' })
 		return
 	}
 
 	// 2. Delete the file from Supabase Storage.
 	//    An image without image is an external URL (e.g. from the import) – there is no file to delete.
-	if (current.image) {
+	if (current.image_path) {
 		try {
-			await removeProductImage(current.image)
+			await removeProductImage(current.image_path)
 		} catch (err) {
 			console.error('[IMAGE] Delete failed:', err)
 			// The product keeps its image – nothing has been changed in the DB.
@@ -172,7 +172,7 @@ router.delete('/delete/:id', async (req, res, next) => {
 	let product
 	try {
 		const { rows } = await pool.query(
-			'UPDATE product SET image = NULL, image = NULL WHERE id = $1 RETURNING *',
+			'UPDATE product SET image = NULL, image_path = NULL WHERE id = $1 RETURNING *',
 			[id]
 		)
 		product = rows[0]
@@ -182,7 +182,7 @@ router.delete('/delete/:id', async (req, res, next) => {
 
 	const searchIndexed = await syncIndex(product)
 
-	res.json({ deleted: current.image ?? current.image, searchIndexed })
+	res.json({ deleted: current.image_path ?? current.image, searchIndexed })
 })
 
 export default router
