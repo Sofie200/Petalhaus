@@ -1,6 +1,6 @@
 import express from "express";
 import { pool } from "../_db/pool.js";
-import { removeProducts, replaceAllProducts } from "../_integrations/searchAdapter.js";
+import { indexProducts, removeProducts, replaceAllProducts } from "../_integrations/searchAdapter.js";
 import { verifyToken } from "../_middleware/verifyToken.js";
 import { requireAdmin } from "../_middleware/requireAdmin.js";
 
@@ -11,17 +11,16 @@ function parseId(value) {
     return /^\d+$/.test(value) ? Number(value) : null;
 }
 
-// Sync to Algolia AFTER the database. If Algolia fails, the database change still stands –
-// the answer says so with searchIndexed: false, and "reindex" below can fix it later.
+// Sync to Algolia AFTER the database. Upsert: only THESE products are added or updated.
+// If Algolia fails, the database change still stands – the answer says so with searchIndexed: false.
 async function syncIndex(products) {
-    let searchIndexed = true;
     try {
-        await replaceAllProducts(products);
+        await indexProducts(products);
+        return true;
     } catch (err) {
-        console.warn("Could not replace the Algolia index:", err);
-        searchIndexed = false;
+        console.warn("Could not index product(s) in Algolia:", err);
+        return false;
     }
-    return searchIndexed;
 }
 
 /* --- GET ALL PRODUCTS --- */
@@ -47,15 +46,19 @@ productRouter.post("/reindex", verifyToken, requireAdmin, async (req, res, next)
         return next(err);
     }
 
-    const searchIndexed = await syncIndex(products);
-    if (!searchIndexed) {
-        return res.status(502).json({
-            error: "Sökindexet kunde inte uppdateras. Försök igen om en stund.",
-            count: products.length,
-        });
+    // Replaces the WHOLE index with exactly the products in the database –
+    // so products deleted directly in the DB disappear from the search too.
+    let searchIndexed = true;
+    try {
+        await replaceAllProducts(products);
+    } catch (err) {
+        console.warn("Could not replace the Algolia index:", err);
+        searchIndexed = false;
     }
 
     res.json({ message: "Alla produkter är indexerade", count: products.length });
+
+    return searchIndexed;
 });
 
 /* --- GET PRODUCT BY ID --- */

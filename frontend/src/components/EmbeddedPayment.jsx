@@ -27,7 +27,7 @@ function messageFor(status, body) {
     return 'Något gick fel när betalningen skulle startas. Försök igen.'
 }
 
-export default function EmbeddedPayment({ cart }) {
+export default function EmbeddedPayment({ cart, shipping }) {
     const [stripe, setStripe] = useState(null)
     const [error, setError] = useState(null)
     const [attempt, setAttempt] = useState(0)
@@ -68,6 +68,7 @@ export default function EmbeddedPayment({ cart }) {
                 },
                 body: JSON.stringify({
                     items: cart.map(({ id, quantity }) => ({ id, quantity })),
+                    shipping,
                 }),
                 // Our server waits max ~30 s on Stripe (3 × 10 s), so give up a little after that
                 signal: AbortSignal.timeout(35_000),
@@ -89,7 +90,7 @@ export default function EmbeddedPayment({ cart }) {
             setError(message) // shows our message instead of the empty form
             throw err         // tell Stripe it failed, too
         }
-    }, [cart])
+    }, [cart, shipping])
 
     function retry() {
         setError(null)

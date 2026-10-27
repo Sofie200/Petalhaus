@@ -3,10 +3,32 @@ import { z } from 'zod'
 import { pool } from '../_db/pool.js'
 import { verifyToken } from '../_middleware/verifyToken.js'
 import { createEmbeddedCheckout } from '../_integrations/paymentAdapter.js'
+import { SHIPPING_METHODS, shippingCost } from '../_integrations/_lib/shippingRates.js'
 
 const router = Router()
 
-// React sends: { items: [{ id, quantity }] } – never prices
+// React sends WHAT to buy and HOW to deliver it – never prices, never the shipping cost.
+//   {
+//     "items": [{ "id": 12, "quantity": 2 }],
+//     "shipping": { "method": "service_point", "postalCode": "21119", "servicePointId": "123456", "servicePointName": "ICA Nära Möllan" }
+//   }
+const Shipping = z
+	.object({
+		method: z.enum(Object.keys(SHIPPING_METHODS)), // "service_point" | "home"
+		postalCode: z
+			.string()
+			.trim()
+			.regex(/^\d{3}\s?\d{2}$/, 'Postnummer ska vara fem siffror')
+			.transform((v) => v.replace(/\s/g, '')),
+		servicePointId: z.string().trim().max(20).optional(),
+		servicePointName: z.string().trim().max(100).optional(),
+	})
+	// Ombud needs a chosen service point – home delivery doesn't
+	.refine((s) => s.method !== 'service_point' || !!s.servicePointId, {
+		message: 'Välj ett ombud',
+		path: ['servicePointId'],
+	})
+
 const Cart = z.object({
 	items: z
 		.array(
@@ -16,14 +38,16 @@ const Cart = z.object({
 			})
 		)
 		.min(1),
+	shipping: Shipping,
 })
 
 class CartError extends Error { }
 
-const unitPrice = (p) =>
-	Math.round((Number(p.price) - Number(p.discount ?? 0)) * 100) / 100
+const round = (n) => Math.round(n * 100) / 100
 
-// The cart → a pending order with OUR prices, in one transaction
+const unitPrice = (p) => round(Number(p.price) - Number(p.discount ?? 0))
+
+// The cart → a pending order with OUR prices and OUR shipping cost, in one transaction
 async function createOrder(userId, cart) {
 	const client = await pool.connect()
 	try {
@@ -47,29 +71,45 @@ async function createOrder(userId, cart) {
 			return { product: p, name: p.name, price: unitPrice(p), quantity }
 		})
 
-		const grandTotal = items.reduce((sum, i) => sum + i.price * i.quantity, 0)
+		// Shipping is calculated HERE, from the server's subtotal – the free-shipping limit can't be cheated
+		const subtotal = round(items.reduce((sum, i) => sum + i.price * i.quantity, 0))
+		const { method, postalCode, servicePointId, servicePointName } = cart.shipping
+		const shipping = shippingCost(method, subtotal)
+		const grandTotal = round(subtotal + shipping)
 
 		const { rows: [order] } = await client.query(
-			`INSERT INTO order_ (user_id, grand_total, stripe_status)
-       VALUES ($1, $2, 'pending') RETURNING id`,
-			[userId, grandTotal]
+			`INSERT INTO order_ (
+				user_id, grand_total, stripe_status,
+				shipping_method, shipping_cost, shipping_postal_code, service_point_id, service_point_name
+			 )
+			 VALUES ($1, $2, 'pending', $3, $4, $5, $6, $7)
+			 RETURNING id`,
+			[
+				userId, grandTotal,
+				method, shipping, postalCode,
+				method === 'service_point' ? servicePointId : null,
+				method === 'service_point' ? servicePointName ?? null : null,
+			]
 		)
 
 		// One row per unit, one query per product
 		for (const i of items) {
 			await client.query(
 				`INSERT INTO order_item (order_id, product_id, price, discount)
-         SELECT $1, $2, $3, $4 FROM generate_series(1, $5)`,
+				 SELECT $1, $2, $3, $4 FROM generate_series(1, $5)`,
 				[order.id, i.product.id, i.product.price, i.product.discount, i.quantity]
 			)
 		}
 
 		await client.query('COMMIT')
 
-		return {
-			orderId: order.id,
-			items: items.map(({ name, price, quantity }) => ({ name, price, quantity })),
+		// What Stripe charges: the products, plus shipping as its own line (only when it costs something)
+		const lineItems = items.map(({ name, price, quantity }) => ({ name, price, quantity }))
+		if (shipping > 0) {
+			lineItems.push({ name: `Frakt – ${SHIPPING_METHODS[method].label}`, price: shipping, quantity: 1 })
 		}
+
+		return { orderId: order.id, items: lineItems }
 	} catch (err) {
 		await client.query('ROLLBACK')
 		throw err
@@ -78,11 +118,15 @@ async function createOrder(userId, cart) {
 	}
 }
 
-/* --- POST /api/checkout/embedded  { items: [{ id, quantity }] } → { clientSecret } --- */
+/* --- POST /api/checkout/embedded  { items, shipping } → { clientSecret } --- */
 router.post('/embedded', verifyToken, async (req, res) => {
 	const cart = Cart.safeParse(req.body)
 	if (!cart.success) {
-		res.status(400).json({ error: 'Invalid cart', details: z.prettifyError(cart.error) })
+		// The first issue is usually the one the customer can fix, e.g. "Välj ett ombud"
+		res.status(400).json({
+			error: cart.error.issues[0]?.message ?? 'Ogiltig varukorg',
+			details: z.prettifyError(cart.error),
+		})
 		return
 	}
 
@@ -100,7 +144,6 @@ router.post('/embedded', verifyToken, async (req, res) => {
 	}
 
 	try {
-
 		const { rows: [user] } = await pool.query(
 			'SELECT email FROM user_ WHERE id = $1',
 			[req.user.user_id]
@@ -128,39 +171,49 @@ router.post('/embedded', verifyToken, async (req, res) => {
 	}
 })
 
-/* --- GET /api/checkout/status?session_id=... → { orderId, status } --- */
-// For the return page. Status comes from OUR db, set by the webhook.
 /* --- GET /api/checkout/status?session_id=... → the order for the return page --- */
-router.get('/status', verifyToken, async (req, res) => {
-	const { rows: [order] } = await pool.query(
-		`SELECT o.id, o.stripe_status, o.grand_total, u.email
-		 FROM order_ o
-		 JOIN user_ u ON u.id = o.user_id
-		 WHERE o.stripe_session_id = $1 AND o.user_id = $2`,
-		[req.query.session_id, req.user.user_id]
-	)
-	if (!order) {
-		res.status(404).json({ error: 'Ordern hittades inte' })
-		return
+// Status comes from OUR db, set by the webhook. React only shows it.
+router.get('/status', verifyToken, async (req, res, next) => {
+	try {
+		const { rows: [order] } = await pool.query(
+			`SELECT o.id, o.stripe_status, o.grand_total, u.email,
+			        o.shipping_method, o.shipping_cost, o.service_point_name
+			 FROM order_ o
+			 JOIN user_ u ON u.id = o.user_id
+			 WHERE o.stripe_session_id = $1 AND o.user_id = $2`,
+			[req.query.session_id, req.user.user_id]
+		)
+		if (!order) {
+			res.status(404).json({ error: 'Ordern hittades inte' })
+			return
+		}
+
+		// One row per unit in order_item → group them back into products with a quantity
+		const { rows: items } = await pool.query(
+			`SELECT p.name, oi.price, oi.discount, COUNT(*)::int AS quantity
+			 FROM order_item oi
+			 JOIN product p ON p.id = oi.product_id
+			 WHERE oi.order_id = $1
+			 GROUP BY p.name, oi.price, oi.discount`,
+			[order.id]
+		)
+
+		res.json({
+			orderId: order.id,
+			status: order.stripe_status,
+			total: Number(order.grand_total),
+			email: order.email,
+			items,
+			shipping: {
+				method: order.shipping_method,
+				label: SHIPPING_METHODS[order.shipping_method]?.label ?? null,
+				cost: Number(order.shipping_cost ?? 0),
+				servicePointName: order.service_point_name,
+			},
+		})
+	} catch (err) {
+		next(err)
 	}
-
-	// One row per unit in order_items → group them back into products with a quantity
-	const { rows: items } = await pool.query(
-		`SELECT p.name, oi.price, oi.discount, COUNT(*)::int AS quantity
-		 FROM order_item oi
-		 JOIN product p ON p.id = oi.product_id
-		 WHERE oi.order_id = $1
-		 GROUP BY p.name, oi.price, oi.discount`,
-		[order.id]
-	)
-
-	res.json({
-		orderId: order.id,
-		status: order.stripe_status,
-		total: Number(order.grand_total),
-		email: order.email,
-		items,
-	})
 })
 
 export default router

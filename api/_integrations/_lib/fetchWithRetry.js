@@ -6,6 +6,8 @@ const RETRYABLE = new Set([408, 429, 500, 502, 503, 504]); // a Set has a fast h
 const MAX_ATTEMPTS = 3;
 
 export async function fetchWithRetry(url, { headers = {}, timeoutMs = 5000 } = {}) {
+
+  const safeUrl = url.replace(/apikey=[^&]+/, "apikey=***");
   for (let attempt = 1; attempt <= MAX_ATTEMPTS; attempt++) {
     let response;
     try {
@@ -16,9 +18,9 @@ export async function fetchWithRetry(url, { headers = {}, timeoutMs = 5000 } = {
     } catch (err) {
       // fetch throws when we get no response at all. Say what happened, in plain words.
       if (err instanceof Error && err.name === "TimeoutError") {
-        throw new Error(`No response from ${url} within ${timeoutMs} ms (timeout)`);
+        throw new Error(`No response from ${safeUrl} within ${timeoutMs} ms (timeout)`);
       }
-      throw new Error(`Could not reach ${url} (network error)`, { cause: err });
+      throw new Error(`Could not reach ${safeUrl} (network error)`, { cause: err });
     }
 
     if (response.ok) {
