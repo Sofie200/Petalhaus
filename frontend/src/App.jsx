@@ -29,8 +29,6 @@ function App() {
 		fetch(`${API_URL}/currency/rates`)
 			.then(response => response.json())
 			.then((data) => {
-				console.log("hej");
-				console.log(data)
 				setRates(data.rates)
 			})
 	}, []);
