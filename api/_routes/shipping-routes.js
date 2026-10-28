@@ -1,7 +1,7 @@
 import { Router } from "express";
 import { z } from "zod";
 import { pool } from "../_db/pool.js";
-import { getDeliveryEstimate, getNearestServicePoints } from "../_integrations/shippingAdapter.js";
+import { getDeliveryEstimates, getNearestServicePoints } from "../_integrations/shippingAdapter.js";
 import { FREE_SHIPPING_THRESHOLD, SHIPPING_METHODS, shippingCost } from "../_integrations/_lib/shippingRates.js";
 
 const router = Router();
@@ -30,7 +30,10 @@ const ServicePointQuery = z.object({
 router.get("/service-points", async (req, res) => {
     const parsed = ServicePointQuery.safeParse(req.query);
     if (!parsed.success) {
-        return res.status(400).json({ error: "Ogiltig adress", details: z.prettifyError(parsed.error) });
+        return res.status(400).json({
+            error: parsed.error.issues[0]?.message ?? "Ogiltig adress",
+            details: z.prettifyError(parsed.error),
+        });
     }
 
     const { postalCode, street, city, limit } = parsed.data;
@@ -66,7 +69,10 @@ const QuoteBody = z.object({
 router.post("/quote", async (req, res, next) => {
     const parsed = QuoteBody.safeParse(req.body);
     if (!parsed.success) {
-        return res.status(400).json({ error: "Ogiltig förfrågan", details: z.prettifyError(parsed.error) });
+        return res.status(400).json({
+            error: parsed.error.issues[0]?.message ?? "Ogiltig förfrågan",
+            details: z.prettifyError(parsed.error),
+        });
     }
 
     const { postalCode, items } = parsed.data;
@@ -87,23 +93,21 @@ router.post("/quote", async (req, res, next) => {
         return next(err);
     }
 
-    // 2. Delivery estimates for both options, in parallel.
+    // 2. Delivery estimates for both options, in ONE call to PostNord.
     //    If PostNord doesn't answer, the customer can still choose – the estimate is just missing.
-    const methods = Object.entries(SHIPPING_METHODS);
-    const estimates = await Promise.allSettled(
-        methods.map(([, option]) =>
-            FROM_POSTAL_CODE
-                ? getDeliveryEstimate({ fromPostalCode: FROM_POSTAL_CODE, toPostalCode: postalCode, service: option.service })
-                : Promise.reject(new Error("SHOP_POSTAL_CODE is missing in .env"))
-        )
-    );
-
-    const options = methods.map(([method, option], i) => {
-        const estimate = estimates[i];
-        if (estimate.status === "rejected") {
-            console.warn(`[SHIPPING] No delivery estimate for ${method}:`, estimate.reason);
+    let estimates = null;
+    if (!FROM_POSTAL_CODE) {
+        console.warn("[SHIPPING] SHOP_POSTAL_CODE is missing in .env – no delivery estimates");
+    } else {
+        try {
+            estimates = await getDeliveryEstimates({ fromPostalCode: FROM_POSTAL_CODE, toPostalCode: postalCode });
+        } catch (err) {
+            console.warn("[SHIPPING] No delivery estimates:", err);
         }
+    }
 
+    // 3. OUR prices for both options
+    const options = Object.entries(SHIPPING_METHODS).map(([method, option]) => {
         const price = shippingCost(method, subtotal);
         return {
             method,
@@ -111,7 +115,7 @@ router.post("/quote", async (req, res, next) => {
             price,
             originalPrice: option.price,
             free: price === 0,
-            estimate: estimate.status === "fulfilled" ? estimate.value : null,
+            estimate: estimates?.[option.service] ?? null,
         };
     });
 
@@ -120,7 +124,7 @@ router.post("/quote", async (req, res, next) => {
         freeShippingThreshold: FREE_SHIPPING_THRESHOLD,
         remainingForFreeShipping: Math.max(0, Math.round((FREE_SHIPPING_THRESHOLD - subtotal) * 100) / 100),
         options,
-        estimatesAvailable: estimates.some((e) => e.status === "fulfilled"),
+        estimatesAvailable: options.some((o) => o.estimate !== null),
     });
 });
 

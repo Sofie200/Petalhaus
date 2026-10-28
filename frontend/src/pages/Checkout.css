@@ -1,0 +1,30 @@
+.checkout-grid{
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+}
+
+.shipping-picker .fineprint{
+    margin-bottom: 5px;
+}
+
+fieldset{
+    border: 2px solid var(--bg-card-hover);
+    border-radius:var(--radius-md);
+    box-shadow: var(--shadow-soft);
+    margin-bottom: 20px;
+    padding: 15px;
+    display: flex;
+        flex-direction: column;
+        gap: 15px;
+}
+
+.shipping-option{
+    line-height: 1.2rem;
+    display: grid;
+    grid-template-columns: 25px 1fr;
+    gap: 10px;
+}
+
+.shipping-option input{
+    margin-right: 10px;
+}

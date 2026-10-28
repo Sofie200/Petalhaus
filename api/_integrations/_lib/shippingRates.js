@@ -4,8 +4,8 @@
 export const FREE_SHIPPING_THRESHOLD = 500; // kr
 
 export const SHIPPING_METHODS = {
-    service_point: { label: "Ombud", price: 49, service: "servicePoint" },
-    home: { label: "Hemleverans", price: 79, service: "home" },
+    service_point: { label: "Ombud", price: 59, service: "servicePoint" },
+    home: { label: "Hemleverans", price: 99, service: "home" },
 };
 
 /**

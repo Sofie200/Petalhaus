@@ -3,6 +3,7 @@ import EmbeddedPayment from "../components/EmbeddedPayment";
 import ShippingPicker from "../components/ShippingPicker";
 import { useShoppingCart } from "../contexts/ShoppingCart";
 import { useAuth } from "../hooks/useAuth";
+import "./Checkout.css";
 
 const Checkout = () => {
     const { cart } = useShoppingCart();
@@ -24,13 +25,15 @@ const Checkout = () => {
 
     return (
         <div>
-            <ShippingPicker cart={cart} onChange={setShipping} />
+            <h2>Beställ</h2>
+            <div className="checkout-grid">
+                
+                <ShippingPicker cart={cart} onChange={setShipping} />
 
-            {shipping ? (
-                <EmbeddedPayment key={`${cartKey}|${shippingKey}`} cart={cart} shipping={shipping} />
-            ) : (
-                <p className="message">Fyll i postnummer och välj leveranssätt för att gå vidare till betalning.</p>
-            )}
+                {shipping && 
+                    <EmbeddedPayment key={`${cartKey}|${shippingKey}`} cart={cart} shipping={shipping} />
+                }
+            </div>
         </div>
     );
 };

@@ -4,6 +4,7 @@ import { pool } from '../_db/pool.js'
 import { verifyToken } from '../_middleware/verifyToken.js'
 import { createEmbeddedCheckout } from '../_integrations/paymentAdapter.js'
 import { SHIPPING_METHODS, shippingCost } from '../_integrations/_lib/shippingRates.js'
+import { getNearestServicePoints } from '../_integrations/shippingAdapter.js'
 
 const router = Router()
 
@@ -46,6 +47,7 @@ class CartError extends Error { }
 const round = (n) => Math.round(n * 100) / 100
 
 const unitPrice = (p) => round(Number(p.price) - Number(p.discount ?? 0))
+
 
 // The cart → a pending order with OUR prices and OUR shipping cost, in one transaction
 async function createOrder(userId, cart) {
@@ -130,9 +132,30 @@ router.post('/embedded', verifyToken, async (req, res) => {
 		return
 	}
 
+	// The chosen service point must be one of PostNord's service points for the postal code.
+	// The name also comes from PostNord – never trust what React sends.
+	let shipping = cart.data.shipping
+	if (shipping.method === 'service_point') {
+		let servicePoints
+		try {
+			servicePoints = await getNearestServicePoints({ postalCode: shipping.postalCode, limit: 10 })
+		} catch (err) {
+			console.error('[CHECKOUT] Could not verify service point:', err)
+			res.status(502).json({ error: 'Kunde inte kontrollera ombudet just nu. Försök igen om en stund.' })
+			return
+		}
+
+		const chosen = servicePoints.find((sp) => sp.id === shipping.servicePointId)
+		if (!chosen) {
+			res.status(400).json({ error: 'Det valda ombudet finns inte för postnumret. Välj ett ombud i listan.' })
+			return
+		}
+		shipping = { ...shipping, servicePointName: chosen.name }
+	}
+
 	let order
 	try {
-		order = await createOrder(req.user.user_id, cart.data)
+		order = await createOrder(req.user.user_id, { ...cart.data, shipping })
 	} catch (err) {
 		if (err instanceof CartError) {
 			res.status(400).json({ error: err.message })

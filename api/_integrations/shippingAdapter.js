@@ -1,22 +1,25 @@
 // Adapter for the shipping service (PostNord).
 // This is the ONLY file that knows PostNord: the API key, URLs, service codes and PostNord's response format.
-// The rest of the shop only sees OUR model: a list of service points, and a delivery estimate.
+// The rest of the shop only sees OUR model: a list of service points, and delivery estimates.
 //
 // TIMEOUT AND ERRORS – the common requirement:
 //   - Every call goes through fetchWithRetry: timeout per attempt + retries on temporary errors (429, 5xx)
-//   - PostNord's answer is validated with Zod – broken service points are skipped, not shown
+//   - PostNord's answer is validated with Zod before the shop uses it – broken entries are skipped
 //   - The route catches errors and answers 502 with a clear message (shipping-routes.js)
+//
+// Checked against PostNord's developer portal:
+//   - Service points: GET /rest/businesslocation/v5/servicepoints/nearest/byaddress (returnType is mandatory)
+//   - Transit time:   GET /rest/transport/v2/transittime/addresstoaddress (startTime is LOCAL time, no zone)
 
 import { z } from "zod";
 import { fetchWithRetry } from "./_lib/fetchWithRetry.js";
 
-const BASE_URL = process.env.POSTNORD_BASE_URL ?? "https://api2.postnord.com"; // sandbox: https://atapi2.postnord.com
+const BASE_URL = process.env.POSTNORD_BASE_URL ?? "https://atapi2.postnord.com"; // sandbox – production: https://api2.postnord.com
 const API_KEY = process.env.POSTNORD_API_KEY ?? "";
 const TIMEOUT_MS = 8000;
 const COUNTRY = "SE";
 
-// PostNord's service codes for our two delivery options.
-// Check them against your agreement in the developer portal if PostNord answers with an unknown service.
+// PostNord's service codes for our two delivery options (from the transit time docs)
 export const SERVICES = {
     servicePoint: { code: "19", name: "MyPack Collect" }, // pick up at a service point (ombud)
     home: { code: "17", name: "MyPack Home" },            // delivered to the door
@@ -29,7 +32,7 @@ function requireKey() {
 }
 
 // PostNord only accepts the key as a query parameter, ?apikey=...
-
+// (fetchWithRetry hides it in its error messages, so it never ends up in the log)
 function buildUrl(path, params) {
     const url = new URL(path, BASE_URL);
     for (const [key, value] of Object.entries({ ...params, apikey: API_KEY })) {
@@ -90,14 +93,14 @@ export async function getNearestServicePoints({ postalCode, streetName, streetNu
     requireKey();
 
     const url = buildUrl("/rest/businesslocation/v5/servicepoints/nearest/byaddress", {
-        returnType: "json",
+        returnType: "json", // mandatory according to the docs
         countryCode: COUNTRY,
         postalCode,
         streetName,
         streetNumber,
         city,
         numberOfServicePoints: limit,
-        context: "optionalservicepoint", // only active service points that can receive deliveries
+        context: "optionalservicepoint", // recommended for checkouts: active service points that take deliveries
     });
 
     const response = await fetchWithRetry(url, { timeoutMs: TIMEOUT_MS });
@@ -140,63 +143,128 @@ export async function getNearestServicePoints({ postalCode, streetName, streetNu
 
 /* --- 2. DELIVERY TIME --- */
 
-// The transit time response differs a bit between API versions and agreements, so the schema is loose:
-// we need EITHER a number of days OR a delivery date. Log the raw answer the first time and adjust if needed.
+// startTime is "local date time" without a zone, e.g. "2026-10-27T22:39".
+// The server runs in UTC on Vercel, so we convert to Swedish time ourselves.
+function swedishLocalTime(date = new Date()) {
+    const parts = new Intl.DateTimeFormat("sv-SE", {
+        timeZone: "Europe/Stockholm",
+        year: "numeric",
+        month: "2-digit",
+        day: "2-digit",
+        hour: "2-digit",
+        minute: "2-digit",
+        hourCycle: "h23",
+    }).formatToParts(date);
+    const get = (type) => parts.find((p) => p.type === type).value;
+    return `${get("year")}-${get("month")}-${get("day")}T${get("hour")}:${get("minute")}`;
+}
+
+// One entry per service VARIANT: the basic service (e.g. 19 = PostNord Service Point),
+// with or without additional services (e.g. F1 = SameDay). We want the plain, bookable one.
+// Checked against a real sandbox response:
+//   { service: { basicServiceCode: "19", additionalServices?: [...] },
+//     isBookable: true, errorMessage?: "...",
+//     estimatedTimeOfArrival?: { dateOfDeparture: "2026-10-28", timeOfArrival: "2026-10-29T18:00:00", ... } }
 const PostNordTransitTime = z
     .object({
-        transitTimeInDays: z.coerce.number().int().nonnegative().optional(),
-        deliveryDate: z.string().optional(),
-        deliveryTime: z.string().optional(),
+        service: z
+            .object({
+                basicServiceCode: z.coerce.string().min(1),
+                name: z.string().optional(),
+                additionalServices: z.array(z.unknown()).optional(),
+            })
+            .passthrough(),
+        isBookable: z.boolean().optional(),
+        errorMessage: z.string().optional(),
+        // Only present when the variant is bookable
+        estimatedTimeOfArrival: z
+            .object({
+                dateOfDeparture: z.iso.date(),
+                timeOfArrival: z.iso.datetime({ local: true }), // "2026-10-29T18:00:00", no zone
+            })
+            .passthrough()
+            .optional(),
     })
     .passthrough()
-    .refine((t) => t.transitTimeInDays !== undefined || t.deliveryDate || t.deliveryTime, {
-        message: "No transit time or delivery date in the answer",
-    });
+    // PostNord's model → our model
+    .transform((t) => ({
+        code: t.service.basicServiceCode,
+        hasAddons: (t.service.additionalServices?.length ?? 0) > 0,
+        bookable: t.isBookable !== false && !t.errorMessage,
+        departure: t.estimatedTimeOfArrival?.dateOfDeparture ?? null,
+        arrival: t.estimatedTimeOfArrival?.timeOfArrival ?? null,
+    }));
 
+// Whole days between two "YYYY-MM-DD" dates
+function daysBetween(from, to) {
+    return Math.round((Date.parse(to) - Date.parse(from)) / (24 * 60 * 60 * 1000));
+}
+
+// The list of transit times – at the top level, or inside an object
 const PostNordTransitResponse = z
-    .object({
-        transitTimeResponse: z
-            .object({ transitTimes: z.array(PostNordTransitTime).min(1) })
-            .passthrough(),
-    })
-    .passthrough();
+    .union([
+        z.array(z.unknown()),
+        z.object({ transitTimes: z.array(z.unknown()) }).passthrough(),
+        z.object({ transitTimeResponse: z.object({ transitTimes: z.array(z.unknown()) }).passthrough() }).passthrough(),
+    ])
+    .transform((body) => (Array.isArray(body) ? body : body.transitTimes ?? body.transitTimeResponse.transitTimes));
 
 /**
- * Estimated delivery from our warehouse to the customer's postal code.
- * @param {{ fromPostalCode: string, toPostalCode: string, service: "servicePoint" | "home" }} route
- * @returns {Promise<{ transitDays: number | null, deliveryDate: string | null }>}
+ * Estimated delivery for BOTH our options, in one call to PostNord.
+ * startTime = now: the parcel is assumed to be handed over to PostNord when the customer orders.
+ * @param {{ fromPostalCode: string, toPostalCode: string }} route
+ * @returns {Promise<{ servicePoint: { transitDays: number | null, deliveryDate: string | null } | null, home: { transitDays: number | null, deliveryDate: string | null } | null }>}
  */
-export async function getDeliveryEstimate({ fromPostalCode, toPostalCode, service }) {
+export async function getDeliveryEstimates({ fromPostalCode, toPostalCode }) {
     requireKey();
 
-    const serviceCode = SERVICES[service]?.code;
-    if (!serviceCode) throw new Error(`Unknown shipping service: ${service}`);
-
-    // Check this path in the developer portal (transit time) – like the service points, it may differ per API version
-    const url = buildUrl("/rest/transport/v1/transittime/getTransitTimeInformation.json", {
-        startTime: new Date().toISOString(),
-        serviceCode,
-        fromAddressPostalCode: fromPostalCode,
-        fromAddressCountryCode: COUNTRY,
-        toAddressPostalCode: toPostalCode,
-        toAddressCountryCode: COUNTRY,
+    const url = buildUrl("/rest/transport/v2/transittime/addresstoaddress", {
+        startTime: swedishLocalTime(),
+        serviceCodes: [SERVICES.servicePoint.code, SERVICES.home.code].join(","),
+        originPostalCode: fromPostalCode,
+        originCountryCode: COUNTRY,
+        destinationPostalCode: toPostalCode,
+        destinationCountryCode: COUNTRY,
     });
 
     const response = await fetchWithRetry(url, { timeoutMs: TIMEOUT_MS });
     const body = await response.json();
 
-    const result = PostNordTransitResponse.safeParse(body);
-    if (!result.success) {
-        console.error("[SHIPPING] Unexpected transit time response:", z.prettifyError(result.error));
+    const envelope = PostNordTransitResponse.safeParse(body);
+    if (!envelope.success) {
+        console.error("[SHIPPING] Unexpected transit time response:", JSON.stringify(body).slice(0, 1000));
         throw new Error("PostNord answered in an unexpected format");
     }
 
-    // PostNord's model → our model
-    const first = result.data.transitTimeResponse.transitTimes[0];
-    const date = first.deliveryDate ?? first.deliveryTime ?? null;
+    // Validate each entry, keep the plain, bookable variant per service code
+    const byCode = new Map();
+    for (const raw of envelope.data) {
+        const result = PostNordTransitTime.safeParse(raw);
+        if (!result.success) {
+            console.warn("[SHIPPING] Skipping transit time:", JSON.stringify(raw).slice(0, 300));
+            continue;
+        }
+        const t = result.data;
+        if (t.hasAddons || !t.bookable) continue; // a variant with addons, or not offered for this route
+        if (!t.arrival) {
+            console.warn("[SHIPPING] Bookable, but no time of arrival:", JSON.stringify(raw).slice(0, 500));
+            continue;
+        }
+        if (!byCode.has(t.code)) byCode.set(t.code, t);
+    }
+
+    const toEstimate = (code) => {
+        const t = byCode.get(code);
+        if (!t) return null;
+        const deliveryDate = t.arrival.slice(0, 10); // "2026-10-29T18:00:00" → "2026-10-29"
+        return {
+            deliveryDate,
+            transitDays: t.departure ? daysBetween(t.departure, deliveryDate) : null,
+        };
+    };
 
     return {
-        transitDays: first.transitTimeInDays ?? null,
-        deliveryDate: date ? date.slice(0, 10) : null, // "2026-10-29T16:00:00" → "2026-10-29"
+        servicePoint: toEstimate(SERVICES.servicePoint.code),
+        home: toEstimate(SERVICES.home.code),
     };
 }

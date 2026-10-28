@@ -1,6 +1,7 @@
 // The customer picks how the order is delivered: postal code → ombud or home delivery → (ombud) which one.
 // Prices and delivery times come from OUR API – it calculates them on the server, from OUR prices.
 import { useEffect, useState } from "react";
+import Loading from "./Loading";
 
 const API = import.meta.env.VITE_API_URL;
 const POSTAL_CODE = /^\d{3}\s?\d{2}$/;
@@ -116,9 +117,10 @@ export default function ShippingPicker({ cart, onChange }) {
 
     return (
         <div className="shipping-picker">
-            <h2>Leverans</h2>
 
-            <label htmlFor="postal-code">Postnummer</label>
+            <label htmlFor="postal-code">Postnummer
+                <div className="fineprint">Fyll i postnummer och välj leveranssätt för att gå vidare till betalning.</div>
+            </label>
             <input
                 id="postal-code"
                 inputMode="numeric"
@@ -129,17 +131,19 @@ export default function ShippingPicker({ cart, onChange }) {
                 maxLength={6}
             />
 
-            {loading && <p>Hämtar fraktalternativ…</p>}
-            {error && <p role="alert" className="message error">{error}</p>}
+            <br /><br />
+
+            {loading && <Loading /> }
+            {error && <span role="alert">{error}<br /><br /></span>}
 
             {quote && !loading && (
                 <>
                     {quote.remainingForFreeShipping > 0 ? (
-                        <p className="fineprint">
-                            Handla för {formatPrice(quote.remainingForFreeShipping)} till så får du fri frakt.
-                        </p>
+                        <div className="fineprint">
+                            Handla för {formatPrice(quote.remainingForFreeShipping)} till så får du fri frakt.<br />
+                        </div>
                     ) : (
-                        <p className="fineprint">Du har fri frakt!</p>
+                            <div className="fineprint">Du har fri frakt!<br /></div>
                     )}
 
                     <fieldset>
@@ -166,7 +170,7 @@ export default function ShippingPicker({ cart, onChange }) {
                                         ) : (
                                             formatPrice(option.price)
                                         )}
-                                        {estimate && <><br /><span className="fineprint">{estimate}</span></>}
+                                        {estimate && <><div className="fineprint">{estimate}</div></>}
                                     </span>
                                 </label>
                             );
