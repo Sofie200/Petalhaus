@@ -5,15 +5,28 @@ import { Link } from 'react-router-dom'
 import { useShoppingCart } from '../contexts/ShoppingCart'
 
 type OrderItem = { name: string; price: string; discount: string | null; quantity: number }
+type Shipping = {
+	method: 'service_point' | 'home' | null
+	label: string | null
+	cost: number
+	servicePointName: string | null
+}
 type Order = {
 	orderId: number
 	status: 'pending' | 'paid' | 'cancelled'
 	total: number
 	email: string
 	items: OrderItem[]
+	shipping: Shipping
 }
 
 const API = import.meta.env.VITE_API_URL
+
+const formatPrice = (kr: number) =>
+	new Intl.NumberFormat('sv-SE', { style: 'currency', currency: 'SEK' }).format(kr)
+
+// Same price rule as the server: discount is an amount in kr
+const unitPrice = (item: OrderItem) => Number(item.price) - Number(item.discount ?? 0)
 
 export default function ReturnPage() {
 	const { clearCart } = useShoppingCart()
@@ -42,7 +55,7 @@ export default function ReturnPage() {
 				setOrder(data)
 
 				if (data.status === 'paid') {
-					clearCart();
+					clearCart()
 				} else if (data.status === 'pending' && attempts < 10) {
 					// The webhook may arrive a moment after the customer – ask again
 					attempts++
@@ -73,8 +86,9 @@ export default function ReturnPage() {
 		)
 	}
 
+	const { shipping } = order
+
 	return (
-		<main>
 			<div>
 				<h1>Tack för din beställning!</h1>
 				<p>Ordernummer: {order.orderId}</p>
@@ -83,14 +97,25 @@ export default function ReturnPage() {
 				<ul>
 					{order.items.map((item) => (
 						<li key={`${item.name}-${item.price}`}>
-							{item.quantity} × {item.name} – {Number(item.price)} kr
+							{item.quantity} × {item.name} – {formatPrice(unitPrice(item))}
 						</li>
 					))}
 				</ul>
 
-				<p><strong>Totalt: {order.total} kr</strong></p>
+				<br />
+
+				<h4>Leverans</h4>
+				<p>
+					{shipping.label ?? 'Okänt leveranssätt'} –{' '}
+					{shipping.cost === 0 ? 'Fri frakt' : formatPrice(shipping.cost)}
+				</p>
+				{shipping.method === 'service_point' && shipping.servicePointName && (
+					<p>Hämtas hos: {shipping.servicePointName}</p>
+				)}
+
+				<p><strong>Totalt: {formatPrice(order.total)}</strong></p>
+
 				<Link to="/">Fortsätt handla</Link>
 			</div>
-		</main>
 	)
 }
