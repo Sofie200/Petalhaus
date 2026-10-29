@@ -132,6 +132,7 @@ const ManageOrders = () => {
                             <tr>
                                 <th align="center">ID</th>
                                 <th align="left">Status</th>
+                                <th align="left">Ordervärde</th>
                                 <th align="left">Datum</th>
                                 <th align="left">Kund</th>
                                 <th></th>
@@ -161,6 +162,10 @@ const ManageOrders = () => {
                                                     </option>
                                                 ))}
                                             </select>
+                                        </td>
+
+                                        <td>
+                                            {order.grand_total}
                                         </td>
 
                                         <td>
@@ -206,7 +211,6 @@ const ManageOrders = () => {
                                         <th align="center">ID</th>
                                         <th align="left">Namn</th>
                                         <th align="right">Pris</th>
-                                        <th align="right">Rabatt</th>
                                     </tr>
                                 </thead>
                                 <tbody>
@@ -214,8 +218,7 @@ const ManageOrders = () => {
                                         <tr key={item.product_id}>
                                             <td align="center">{item.product_id}</td>
                                             <td>{item.name}</td>
-                                            <td align="right">{item.price} kr</td>
-                                            <td align="right">{item.discount} kr</td>
+                                            <td align="right">{item.price - item.discount} kr</td>
                                         </tr>
                                     ))}
                                 </tbody>

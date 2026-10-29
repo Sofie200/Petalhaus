@@ -1,4 +1,5 @@
 import express from "express";
+import { SHIPPING_METHODS } from "../_integrations/_lib/shippingRates.js";
 import { pool } from "../_db/pool.js";
 import { verifyToken } from "../_middleware/verifyToken.js";
 import { requireAdmin } from "../_middleware/requireAdmin.js";
@@ -9,8 +10,9 @@ const orderRouter = express.Router();
 orderRouter.get("/", verifyToken, requireAdmin, async (req, res, next) => {
     try {
         const result = await pool.query(
-            `SELECT o.id, o.date, o.status, u.first_name, u.last_name, u.email FROM order_ o
+            `SELECT o.id, o.date, o.status, o.grand_total, u.first_name, u.last_name, u.email FROM order_ o
             LEFT JOIN user_ u on u.id = o.user_id
+            WHERE stripe_status not in ('pending','cancelled')
             ORDER BY o.id desc`
         );
 
@@ -23,17 +25,41 @@ orderRouter.get("/", verifyToken, requireAdmin, async (req, res, next) => {
 
 /* --- GET ORDER_ITEMS --- */
 orderRouter.get("/:id", verifyToken, requireAdmin, async (req, res, next) => {
-    const { id } = req.params;
+    // "12" → 12, anything else → 400. Otherwise Postgres throws on WHERE id = 'abc' → 500.
+    const id = /^\d+$/.test(req.params.id) ? Number(req.params.id) : null;
+    if (id === null) return res.status(400).json({ error: "Ogiltigt order-id" });
+
     try {
-        const result = await pool.query(
-            `SELECT oi.product_id, oi.price, oi.discount, p.name FROM order_item oi
-            LEFT JOIN product p on p.id = oi.product_id
-            WHERE oi.order_id=$1`,
+        const { rows: [order] } = await pool.query(
+            `SELECT shipping_method, shipping_cost, service_point_name
+             FROM order_ WHERE id = $1`,
+            [id]
+        );
+        if (!order) return res.status(404).json({ error: "Ordern hittades inte" });
+
+        const { rows: items } = await pool.query(
+            `SELECT oi.product_id, oi.price, oi.discount, p.name
+             FROM order_item oi
+             LEFT JOIN product p ON p.id = oi.product_id
+             WHERE oi.order_id = $1`,
             [id]
         );
 
-        return res.json(result.rows);
+        // Shipping as one extra row, shaped like an order_item
+        if (order.shipping_method) {
+            const label = SHIPPING_METHODS[order.shipping_method]?.label ?? order.shipping_method;
+            items.push({
+                product_id: null,
+                name: order.service_point_name
+                    ? `Frakt – ${label} (${order.service_point_name})`
+                    : `Frakt – ${label}`,
+                price: order.shipping_cost ?? "0",
+                discount: null,
+                type: "shipping",
+            });
+        }
 
+        return res.json(items);
     } catch (err) {
         next(err);
     }
