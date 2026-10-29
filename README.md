@@ -4,9 +4,9 @@
 https://petalhaus-v2.vercel.app/
 
 ### Kör projektet lokalt
-1. I roten: `vercel dev`
+1. I roten: `vercel env pull .env` och `yarn dev`
 2. `cd frontend`
-3. `npm run dev`
+3. `vercel env pull .env` och `npm run dev`
 
 ### Testkonton och nycklar (se .env.example)
 | Tjänst | Variabel | Backend/Frontend |
