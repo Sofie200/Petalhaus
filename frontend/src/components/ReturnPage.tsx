@@ -3,6 +3,7 @@
 import { useEffect, useState } from 'react'
 import { Link } from 'react-router-dom'
 import { useShoppingCart } from '../contexts/ShoppingCart'
+import Loading from './Loading';
 
 type OrderItem = { name: string; price: string; discount: string | null; quantity: number }
 type Shipping = {
@@ -71,10 +72,10 @@ export default function ReturnPage() {
 	}, [])
 
 	if (error) return <main><p>{error}</p></main>
-	if (!order) return <main><p>Hämtar din order…</p></main>
+	if (!order) return <main><Loading /></main>
 
 	if (order.status === 'pending') {
-		return <main><p>Vi bekräftar din betalning…</p></main>
+		return <main><Loading /></main>
 	}
 
 	if (order.status !== 'paid') {
@@ -94,6 +95,10 @@ export default function ReturnPage() {
 				<p>Ordernummer: {order.orderId}</p>
 				<p>En bekräftelse skickas till {order.email}</p>
 
+			<br />
+
+			<h4>Orderöversikt</h4>
+
 				<ul>
 					{order.items.map((item) => (
 						<li key={`${item.name}-${item.price}`}>
@@ -102,19 +107,15 @@ export default function ReturnPage() {
 					))}
 				</ul>
 
-				<br />
-
-				<h4>Leverans</h4>
-				<p>
-					{shipping.label ?? 'Okänt leveranssätt'} –{' '}
-					{shipping.cost === 0 ? 'Fri frakt' : formatPrice(shipping.cost)}
-				</p>
-				{shipping.method === 'service_point' && shipping.servicePointName && (
-					<p>Hämtas hos: {shipping.servicePointName}</p>
+				
+				<p>Leverans: {shipping.label ?? 'Okänt leveranssätt'} –{' '} {shipping.cost === 0 ? 'Fri frakt' : formatPrice(shipping.cost)} {shipping.method === 'service_point' && shipping.servicePointName && (
+					<span>({shipping.servicePointName})</span>
 				)}
+				</p>
 
 				<p><strong>Totalt: {formatPrice(order.total)}</strong></p>
 
+			<br /><br />
 				<Link to="/">Fortsätt handla</Link>
 			</div>
 	)

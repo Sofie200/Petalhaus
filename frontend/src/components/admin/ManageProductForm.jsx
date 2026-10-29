@@ -29,6 +29,7 @@ export default function ManageProductForm({ type }) {
         category: "",
         price: 0,
         discount: 0,
+        stock: 0,
         image: "" // the current image URL – sent back unchanged on save, so it isn't wiped
     });
 
@@ -46,6 +47,7 @@ export default function ManageProductForm({ type }) {
                 category: product.category ?? "",
                 price: product.price,
                 discount: product.discount ?? 0,
+                stock: product.stock ?? 0,
                 image: product.image ?? ""
             });
         }
@@ -291,6 +293,17 @@ export default function ManageProductForm({ type }) {
                 type="number"
                 name="discount"
                 value={form.discount}
+                onChange={handleChange}
+            />
+
+            <label htmlFor="stock">Lagersaldo</label>
+            <input
+                id="stock"
+                type="number"
+                name="stock"
+                min="0"
+                step="1"
+                value={form.stock}
                 onChange={handleChange}
             />
 

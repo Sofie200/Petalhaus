@@ -44,7 +44,7 @@ export default function ProductDetails() {
                         to={`/admin/manage-product/${product.id}`}
                         className="btn btn-manage"
                     >
-                        Hantera
+                        <span className="material-symbols-outlined" aria-hidden="true">edit</span>
                     </Link>
                 )}
             </div>

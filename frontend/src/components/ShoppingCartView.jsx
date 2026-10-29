@@ -77,9 +77,11 @@ const ShoppingCartView = () => {
             </div>
 
             {user &&
+            <center>
                 <Link to="/checkout" className="btn">
                     Beställ
                 </Link>
+                </center>
             }
 
             {!user &&
