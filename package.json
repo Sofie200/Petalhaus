@@ -16,6 +16,7 @@
     "@eslint/js": "^10.0.1",
     "@supabase/supabase-js": "^2.118.0",
     "algoliasearch": "^5.60.0",
+    "bcryptjs": "^3.0.3",
     "cookie-parser": "^1.4.7",
     "cors": "^2.8.6",
     "csv-parse": "^7.0.3",

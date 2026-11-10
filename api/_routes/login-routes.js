@@ -1,4 +1,5 @@
 import express from "express";
+import bcrypt from "bcryptjs";
 import { pool } from "../_db/pool.js";
 import { COOKIE_OPTIONS, setAuthCookie } from "../_lib/authCookie.js";
 
@@ -24,7 +25,7 @@ loginRouter.post("/", async (req, res, next) => {
             });
         }
 
-        if (user.pw !== password) {
+        if (!(await bcrypt.compare(password ?? "", user.pw))) {
             return res.status(401).json({ error: "Fel e-postadress eller lösenord" });
         }
 

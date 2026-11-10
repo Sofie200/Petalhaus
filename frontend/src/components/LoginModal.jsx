@@ -3,18 +3,22 @@ import { useAuth } from "../hooks/useAuth";
 
 const API = import.meta.env.VITE_API_URL;
 
+const EMPTY_FORM = { first_name: "", last_name: "", email: "", password: "" };
+
 // Native <dialog>: Esc closes it, focus stays inside, ::backdrop dims the page.
-// With a notice (e.g. the email already belongs to a password account) the Google
-// option is hidden – it would only fail again – and only the password form is shown.
+// Two modes: "login" and "register". With a notice (e.g. the email already belongs
+// to a password account) only the password login is shown – Google would fail again.
 export default function LoginModal({ open, onClose, notice }) {
     const dialogRef = useRef(null);
-    const emailRef = useRef(null);
+    const firstFieldRef = useRef(null);
     const { refresh } = useAuth();
 
-    const [email, setEmail] = useState("");
-    const [password, setPassword] = useState("");
+    const [mode, setMode] = useState("login");
+    const [form, setForm] = useState(EMPTY_FORM);
     const [error, setError] = useState("");
     const [loading, setLoading] = useState(false);
+
+    const isRegister = mode === "register" && !notice;
 
     // Sync the open prop with the dialog element
     useEffect(() => {
@@ -22,15 +26,21 @@ export default function LoginModal({ open, onClose, notice }) {
         if (!dialog) return;
         if (open && !dialog.open) {
             dialog.showModal();
-            emailRef.current?.focus(); // otherwise the × button gets focus first
+            firstFieldRef.current?.focus(); // otherwise the × button gets focus first
         }
         if (!open && dialog.open) dialog.close();
     }, [open]);
 
-    // Runs on Esc, the × button, a backdrop click and after a successful login
+    // Put the cursor in the first field when switching between login and register
+    useEffect(() => {
+        if (dialogRef.current?.open) firstFieldRef.current?.focus();
+    }, [mode]);
+
+    // Runs on Esc, the × button, a backdrop click and after success
     function handleClose() {
         setError("");
-        setPassword("");
+        setForm((f) => ({ ...EMPTY_FORM, email: f.email }));
+        setMode("login");
         onClose();
     }
 
@@ -39,28 +49,44 @@ export default function LoginModal({ open, onClose, notice }) {
         if (e.target === dialogRef.current) dialogRef.current.close();
     }
 
+    function switchMode(next) {
+        setError("");
+        setForm((f) => ({ ...f, password: "" }));
+        setMode(next);
+    }
+
+    const update = (field) => (e) => setForm((f) => ({ ...f, [field]: e.target.value }));
+
     async function handleSubmit(e) {
         e.preventDefault();
         setError("");
         setLoading(true);
 
+        const request = isRegister
+            ? { url: `${API}/register`, body: form, fallback: "Kontot kunde inte skapas" }
+            : {
+                url: `${API}/login`,
+                body: { username: form.email, password: form.password },
+                fallback: "Fel e-postadress eller lösenord",
+            };
+
         try {
-            const res = await fetch(`${API}/login`, {
+            const res = await fetch(request.url, {
                 method: "POST",
                 headers: { "Content-Type": "application/json" },
                 credentials: "include",
-                body: JSON.stringify({ username: email, password }),
+                body: JSON.stringify(request.body),
             });
 
-            const data = await res.json();
+            const data = await res.json().catch(() => ({}));
 
             if (!res.ok || !data.success) {
-                setError(data.error || "Fel e-postadress eller lösenord");
+                setError(data.error || request.fallback);
                 return;
             }
 
             await refresh();
-            setEmail("");
+            setForm(EMPTY_FORM);
             dialogRef.current?.close();
         } catch {
             setError("Något gick fel. Försök igen.");
@@ -68,6 +94,14 @@ export default function LoginModal({ open, onClose, notice }) {
             setLoading(false);
         }
     }
+
+    const title = notice ? "Kontot finns redan" : isRegister ? "Skapa konto" : "Logga in";
+    const lead = isRegister
+        ? "Bli kund hos Petalhaus och se dina beställningar under Mina sidor."
+        : "Välkommen tillbaka till Petalhaus.";
+    const submitLabel = isRegister
+        ? (loading ? "Skapar konto…" : "Skapa konto")
+        : (loading ? "Loggar in…" : "Logga in");
 
     return (
         <dialog
@@ -87,15 +121,13 @@ export default function LoginModal({ open, onClose, notice }) {
                     ×
                 </button>
 
+                <h2 id="login-modal-title">{title}</h2>
+
                 {notice ? (
-                    <>
-                        <h2 id="login-modal-title">Kontot finns redan</h2>
-                        <p className="login-modal-notice" role="alert">{notice}</p>
-                    </>
+                    <p className="login-modal-notice" role="alert">{notice}</p>
                 ) : (
                     <>
-                        <h2 id="login-modal-title">Logga in</h2>
-                        <p className="login-modal-lead">Välkommen tillbaka till Petalhaus.</p>
+                        <p className="login-modal-lead">{lead}</p>
 
                         <a className="google-login" href={`${API}/auth/google`}>
                             Fortsätt med Google
@@ -106,15 +138,43 @@ export default function LoginModal({ open, onClose, notice }) {
                 )}
 
                 <form className="login-form" onSubmit={handleSubmit}>
+                    {isRegister && (
+                        <div className="login-form-row">
+                            <label>
+                                Förnamn
+                                <input
+                                    type="text"
+                                    value={form.first_name}
+                                    autoComplete="given-name"
+                                    onChange={update("first_name")}
+                                    maxLength={50}
+                                    required
+                                    ref={firstFieldRef}
+                                />
+                            </label>
+                            <label>
+                                Efternamn
+                                <input
+                                    type="text"
+                                    value={form.last_name}
+                                    autoComplete="family-name"
+                                    onChange={update("last_name")}
+                                    maxLength={50}
+                                    required
+                                />
+                            </label>
+                        </div>
+                    )}
+
                     <label>
                         E-post
                         <input
                             type="email"
-                            value={email}
+                            value={form.email}
                             autoComplete="email"
-                            onChange={(e) => setEmail(e.target.value)}
+                            onChange={update("email")}
                             required
-                            ref={emailRef}
+                            ref={isRegister ? undefined : firstFieldRef}
                         />
                     </label>
 
@@ -122,19 +182,38 @@ export default function LoginModal({ open, onClose, notice }) {
                         Lösenord
                         <input
                             type="password"
-                            value={password}
-                            autoComplete="current-password"
-                            onChange={(e) => setPassword(e.target.value)}
+                            value={form.password}
+                            autoComplete={isRegister ? "new-password" : "current-password"}
+                            onChange={update("password")}
+                            minLength={isRegister ? 8 : undefined}
+                            maxLength={isRegister ? 72 : undefined}
+                            aria-describedby={isRegister ? "password-hint" : undefined}
                             required
                         />
+                        {isRegister && (
+                            <span id="password-hint" className="login-hint">Minst 8 tecken</span>
+                        )}
                     </label>
 
                     {error && <p className="login-error" role="alert">{error}</p>}
 
                     <button type="submit" disabled={loading}>
-                        {loading ? "Loggar in…" : "Logga in"}
+                        {submitLabel}
                     </button>
                 </form>
+
+                {!notice && (
+                    <p className="login-switch">
+                        {isRegister ? "Har du redan ett konto?" : "Ny kund?"}{" "}
+                        <button
+                            type="button"
+                            className="link-button"
+                            onClick={() => switchMode(isRegister ? "login" : "register")}
+                        >
+                            {isRegister ? "Logga in" : "Skapa konto"}
+                        </button>
+                    </p>
+                )}
             </div>
         </dialog>
     );

@@ -657,6 +657,45 @@ th {
     margin-top: 6px;
 }
 
+.login-form-row {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 12px;
+}
+
+.login-hint {
+    font-size: 0.75rem;
+    color: var(--color-muted);
+}
+
+.login-switch {
+    margin: 20px 0 0;
+    text-align: center;
+    font-size: 0.85rem;
+    color: var(--color-muted);
+}
+
+/* Looks like a link, behaves like a button */
+.link-button,
+.link-button:hover {
+    padding: 0;
+    background: none;
+    box-shadow: none;
+    font-family: var(--font-main);
+    font-size: inherit;
+    letter-spacing: 0;
+    text-decoration: underline;
+    text-underline-offset: 3px;
+}
+
+.link-button {
+    color: var(--color-secondary);
+}
+
+.link-button:hover {
+    color: var(--color-accent);
+}
+
 /* ============================
    PRODUCT GRID
 ============================ */
@@ -912,6 +951,10 @@ th {
 
     .login-modal-content {
         padding: 32px 20px 24px;
+    }
+
+    .login-form-row {
+        grid-template-columns: 1fr;
     }
 
     .admin-nav {

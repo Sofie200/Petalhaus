@@ -15,6 +15,7 @@ import checkoutRouter from "./_routes/checkout-routes.js";
 import imageRouter from "./_routes/image-routes.js";
 import shippingRouter from "./_routes/shipping-routes.js";
 import googleAuthRouter from "./_routes/google-auth-routes.js"
+import registerRouter from "./_routes/register-routes.js";
 
 const app = express();
 const port = process.env.PORT || 3000;
@@ -32,6 +33,7 @@ app.use(express.urlencoded({ extended: true }));
 app.use(cookieParser());
 
 app.use("/api/login", loginRouter);
+app.use("/api/register", registerRouter);
 app.use("/api/products", productRouter);
 app.use("/api/cart", cartRouter);
 app.use("/api/user", userRouter);
