@@ -1,12 +1,23 @@
-import { createContext, useState, useEffect } from "react";
+import { createContext, useState, useEffect, useCallback } from "react";
 
 const API = import.meta.env.VITE_API_URL;
 export const AuthContext = createContext();
 
 export function AuthProvider({ children }) {
+    // undefined = not checked yet, null = logged out, object = logged in
     const [user, setUser] = useState(undefined);
 
     const login = (userData) => setUser(userData);
+
+    // Ask the server who is logged in (the cookie is httpOnly, so React can't read it)
+    const refresh = useCallback(async () => {
+        try {
+            const response = await fetch(`${API}/user/me`, { credentials: 'include' });
+            setUser(response.ok ? await response.json() : null);
+        } catch {
+            setUser(null);
+        }
+    }, []);
 
     async function logout() {
         try {
@@ -20,30 +31,11 @@ export function AuthProvider({ children }) {
     }
 
     useEffect(() => {
-
-        async function getMe() { 
-            
-            try {
-                const response = await fetch(`${API}/user/me`, {
-                    credentials: 'include',
-                })
-
-                if (response.ok){
-                    setUser(await response.json());
-                }else{
-                    setUser(null);
-                }
-
-            } catch {
-                setUser(null);
-            }
-        };
-
-        getMe();
-    }, []);
+        refresh();
+    }, [refresh]);
 
     return (
-        <AuthContext.Provider value={{ user, login, logout }}>
+        <AuthContext.Provider value={{ user, login, logout, refresh }}>
             {children}
         </AuthContext.Provider>
     );

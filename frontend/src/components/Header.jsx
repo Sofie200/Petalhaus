@@ -1,7 +1,6 @@
 import { Link } from "react-router-dom";
 import Login from "./Login";
 import CartIcon from "./CartIcon";
-import CurrencySelect from "./CurrencySelect";
 
 
 const Header = () => {
@@ -15,7 +14,6 @@ const Header = () => {
                 </div>
 
                 <div className="right">
-                    <CurrencySelect />
                     <CartIcon />
                     <Login />
                 </div>

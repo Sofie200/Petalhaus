@@ -26,8 +26,16 @@
     color:inherit;
 }
 
+.products-toolbar {
+    display: flex;
+    justify-content: flex-end;
+    align-items: center;
+    gap: 12px;
+    margin: 0 0 10px;
+}
+
 .search-count{
     text-align: right;
     color: var(--color-muted);
-    margin: 0 0 5px;
+    margin: 0;
 }

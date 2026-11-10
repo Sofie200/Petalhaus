@@ -1,6 +1,7 @@
 import { useState, useEffect } from "react";
 import { useSearchParams } from "react-router-dom";
 import ProductsView from "../components/ProductsView";
+import CurrencySelect from "../components/CurrencySelect";
 import "./Products.css";
 
 const PAGE_SIZE = 20;
@@ -124,12 +125,15 @@ const Products = () => {
                 onChange={(e) => setInput(e.target.value)}
             />
 
-            {meta && !loading && !error && (
-                <p className="search-count" role="status">
-                    {meta.total} {meta.total === 1 ? "produkt" : "produkter"}
-                    {q.trim() && <> för "{q.trim()}"</>}
-                </p>
-            )}
+            <div className="products-toolbar">
+                {meta && !loading && !error && (
+                    <p className="search-count" role="status">
+                        {meta.total} {meta.total === 1 ? "produkt" : "produkter"}
+                        {q.trim() && <> för "{q.trim()}"</>}
+                    </p>
+                )}
+                <CurrencySelect />
+            </div>
 
             <ProductsView products={products} loading={loading} error={error} />
 

@@ -3,90 +3,36 @@ import { useState } from "react";
 import { useAuth } from "../hooks/useAuth";
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
 import { faCircleUser } from "@fortawesome/free-solid-svg-icons";
-
-const API = import.meta.env.VITE_API_URL;
+import LoginModal from "./LoginModal";
 
 export default function Login() {
 
-    const { user, login } = useAuth();
+    const { user } = useAuth();
+    const [open, setOpen] = useState(false);
 
-    const [username, setUsername] = useState("");
-    const [password, setPassword] = useState("");
-    const [error, setError] = useState("");
+    // Still asking the server who is logged in – show nothing instead of flashing the button
+    if (user === undefined) return null;
 
-    async function handleSubmit(e) {
-
-        e.preventDefault();
-        setError("");
-
-        try {
-
-            const res = await fetch(`${API}/login`, {
-                method: "POST",
-                headers: { "Content-Type": "application/json" },
-                credentials: 'include',
-                body: JSON.stringify({ username, password })
-            });
-
-            const data = await res.json();
-
-            if (!res.ok || !data.success) {
-                setError(data.error || "Fel användarnamn eller lösenord");
-                return;
-            }
-
-            login({ user_id: data.user_id, username: data.username, role: data.role});
-
-            setUsername("");
-            setPassword("");
-
-        } catch (err) {
-            setError("Något gick fel: " + err);
-        }
+    if (user) {
+        return (
+            <span title={`Inloggad som ${user.username}`}>
+                <Link to="/profile" aria-label="Mina sidor">
+                    <FontAwesomeIcon
+                        icon={faCircleUser}
+                        className="profile"
+                        size="2x"
+                    />
+                </Link>
+            </span>
+        );
     }
 
     return (
         <>
-
-            {user
-
-                ? <span title={`Inloggad som ${user.username}`}>
-                    <Link to="/profile">
-                        <FontAwesomeIcon
-                            icon={faCircleUser}
-                            className="profile"
-                            size="2x"
-                        />
-                    </Link>
-                </span>
-                : <div className="login-container">
-
-                    <form onSubmit={handleSubmit}>
-                        <input
-                            type="text"
-                            placeholder="Användarnamn"
-                            value={username}
-                            autoComplete="username"
-                            onChange={(e) => setUsername(e.target.value)}
-                            required
-                        />
-
-                        <input
-                            type="password"
-                            placeholder="Lösenord"
-                            value={password}
-                            autoComplete="current-password"
-                            onChange={(e) => setPassword(e.target.value)}
-                            required
-                        />
-
-                        {error && <p className="error">{error}</p>}
-
-                        <button type="submit">Logga in</button>
-
-                    </form>
-                </div>
-            }
+            <button className="login-button" onClick={() => setOpen(true)}>
+                Logga in
+            </button>
+            <LoginModal open={open} onClose={() => setOpen(false)} />
         </>
-    )
+    );
 }

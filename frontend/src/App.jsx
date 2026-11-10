@@ -6,6 +6,7 @@ import { CurrencyProvider } from './contexts/CurrencyContext';
 import Footer from './components/Footer'
 import Header from './components/Header'
 import Nav from './components/Nav';
+import AuthError from './components/AuthError';
 import Products from './pages/Products'
 import Product from "./pages/Product";
 import Cart from './pages/Cart';
@@ -42,6 +43,7 @@ function App() {
 						<Header />
 						<div>
 							<Nav />
+							<AuthError />
 							<Routes>
 								<Route path="/" element={<Products />} />
 								<Route path="/product/:id" element={<Product />} />
