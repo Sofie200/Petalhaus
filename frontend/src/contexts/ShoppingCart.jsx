@@ -19,9 +19,7 @@ export function ShoppingCartProvider({ children }) {
     const { user } = useAuth();
 
     useEffect(() => {
-        async function loadCart() {
-
-            const token = localStorage.getItem("token");
+        async function loadCart() {            
 
             // Fetch guest cart
             const guest = JSON.parse(localStorage.getItem("cart_guest") || "[]");
@@ -36,10 +34,8 @@ export function ShoppingCartProvider({ children }) {
             for (const item of guest) {
                 await fetch(`${API}/cart`, {
                     method: "POST",
-                    headers: {
-                        "Content-Type": "application/json",
-                        "Authorization": `Bearer ${token}`
-                    },
+                    headers: { "Content-Type": "application/json" },
+                    credentials: 'include',
                     body: JSON.stringify({
                         user_id: user.user_id,
                         product_id: item.id,
@@ -51,10 +47,7 @@ export function ShoppingCartProvider({ children }) {
             // Then fetch all cart items from backend.
             const res = await fetch(`${API}/cart/${user.user_id}`, {
                 method: "GET",
-                headers: {
-                    "Content-Type": "application/json",
-                    "Authorization": `Bearer ${token}`
-                }
+                credentials: 'include',
             });
 
             const backendItems = await res.json();
@@ -82,7 +75,7 @@ export function ShoppingCartProvider({ children }) {
 
     async function addToCart(product) {
 
-        const token = localStorage.getItem("token");
+        
 
         if (!user) {
             const guest = JSON.parse(localStorage.getItem("cart_guest") || "[]");
@@ -107,7 +100,8 @@ export function ShoppingCartProvider({ children }) {
             try {
                 const res = await fetch(`${API}/cart`, {
                     method: "POST",
-                    headers: { "Content-Type": "application/json", "Authorization": `Bearer ${token}` },
+                    headers: { "Content-Type": "application/json" },
+                    credentials: 'include',
                     body: JSON.stringify({
                         user_id: user.user_id,
                         product_id: product.id,
@@ -153,7 +147,7 @@ export function ShoppingCartProvider({ children }) {
     // Remove from cart
     async function removeFromCart(product) {
 
-        const token = localStorage.getItem("token");
+        
 
         // If logged in, remove to DB
         if (user) {
@@ -161,7 +155,8 @@ export function ShoppingCartProvider({ children }) {
             try {
                 const res = await fetch(`${API}/cart`, {
                     method: "DELETE",
-                    headers: { "Content-Type": "application/json", "Authorization": `Bearer ${token}` },
+                    headers: { "Content-Type": "application/json" },
+                    credentials: 'include',
                     body: JSON.stringify({
                         user_id: user.user_id,
                         product_id: product.id,
@@ -187,14 +182,14 @@ export function ShoppingCartProvider({ children }) {
 
     async function clearCart() {
 
-        const token = localStorage.getItem("token");
+        
 
         // Empty backend cart
         if (user) {
             try {
                 const res = await fetch(`${API}/cart/clear/${user.user_id}`, {
                     method: "DELETE",
-                    headers: { "Content-Type": "application/json", "Authorization": `Bearer ${token}` }
+                    credentials: 'include',
                 });
 
                 if (!res.ok) {
@@ -227,17 +222,15 @@ export function ShoppingCartProvider({ children }) {
     }
 
     async function updateItemQuantity(id, quantity) {
-        const token = localStorage.getItem("token");
+        
 
         // Update backend if user is logged in
         if (user) {
             try {
                 await fetch(`${API}/cart`, {
                     method: "PUT",
-                    headers: {
-                        "Content-Type": "application/json",
-                        "Authorization": `Bearer ${token}`
-                    },
+                    headers: { "Content-Type": "application/json" },
+                    credentials: 'include',
                     body: JSON.stringify({
                         user_id: user.user_id,
                         product_id: id,

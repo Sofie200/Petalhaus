@@ -24,6 +24,7 @@ export default function Login() {
             const res = await fetch(`${API}/login`, {
                 method: "POST",
                 headers: { "Content-Type": "application/json" },
+                credentials: 'include',
                 body: JSON.stringify({ username, password })
             });
 
@@ -34,9 +35,7 @@ export default function Login() {
                 return;
             }
 
-            login(data.token);
-
-            localStorage.setItem("token", data.token);
+            login({ user_id: data.user_id, username: data.username, role: data.role});
 
             setUsername("");
             setPassword("");

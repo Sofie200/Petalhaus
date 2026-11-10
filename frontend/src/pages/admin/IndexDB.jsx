@@ -17,8 +17,7 @@ const IndexDB = () => {
         try {
             const res = await fetch(`${API}/products/reindex`, {
                 method: "POST",
-                headers: { Authorization: `Bearer ${localStorage.getItem("token")}` },
-                // Hela katalogen kan ta en stund, men inte hur länge som helst
+                credentials: 'include',
                 signal: AbortSignal.timeout(60_000),
             });
             const data = await res.json().catch(() => null);

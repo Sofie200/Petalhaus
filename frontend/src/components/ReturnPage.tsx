@@ -48,7 +48,9 @@ export default function ReturnPage() {
 			try {
 				const res = await fetch(
 					`${API}/checkout/status?session_id=${encodeURIComponent(sessionId)}`,
-					{ headers: { Authorization: `Bearer ${localStorage.getItem('token')}` } }
+					{ 
+						credentials: 'include',
+					 }
 				)
 				const data = await res.json()
 				if (!res.ok) throw new Error(data.error)

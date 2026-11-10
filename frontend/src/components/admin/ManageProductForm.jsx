@@ -18,7 +18,7 @@ const UPLOAD_TIMEOUT_MS = 30_000;
 export default function ManageProductForm({ type }) {
 
     const API = import.meta.env.VITE_API_URL;
-    const token = localStorage.getItem("token");
+    
     const navigate = useNavigate();
     const { product, loading, error } = useProduct();
     const fileInputRef = useRef(null);
@@ -114,8 +114,7 @@ export default function ManageProductForm({ type }) {
         try {
             res = await fetch(`${API}/image/upload/${productId}`, {
                 method: "POST",
-                // No Content-Type: the browser sets multipart/form-data with the right boundary itself
-                headers: { "Authorization": `Bearer ${token}` },
+                credentials: 'include',
                 body,
                 signal: AbortSignal.timeout(UPLOAD_TIMEOUT_MS),
             });
@@ -144,7 +143,8 @@ export default function ManageProductForm({ type }) {
             const isEdit = type === "edit";
             const res = await fetch(isEdit ? `${API}/products/${product.id}` : `${API}/products`, {
                 method: isEdit ? "PUT" : "POST",
-                headers: { "Content-Type": "application/json", "Authorization": `Bearer ${token}` },
+                headers: { "Content-Type": "application/json" },
+                credentials: 'include',
                 body: JSON.stringify(form)
             });
 
@@ -188,7 +188,7 @@ export default function ManageProductForm({ type }) {
         try {
             const res = await fetch(`${API}/image/delete/${product.id}`, {
                 method: "DELETE",
-                headers: { "Authorization": `Bearer ${token}` },
+                credentials: 'include',
                 signal: AbortSignal.timeout(UPLOAD_TIMEOUT_MS),
             });
 
@@ -221,7 +221,7 @@ export default function ManageProductForm({ type }) {
         try {
             const res = await fetch(`${API}/products/${product.id}`, {
                 method: "DELETE",
-                headers: { "Authorization": `Bearer ${token}` }
+                credentials: 'include',
             });
 
             if (!res.ok) {

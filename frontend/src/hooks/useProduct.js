@@ -4,7 +4,7 @@ import { useParams } from "react-router-dom"
 export default function useProduct() {
 
     const API = import.meta.env.VITE_API_URL;
-    const token = localStorage.getItem("token");
+    
     const { id } = useParams();
     const [product, setProduct] = useState(null);
     const [loading, setLoading] = useState(true);
@@ -20,7 +20,7 @@ export default function useProduct() {
         async function loadProduct() {
             try {
                 const res = await fetch(`${API}/products/${id}`, {
-                    headers: { "Content-Type": "application/json", "Authorization": `Bearer ${token}` }
+                    credentials: 'include',
                 });
 
                 if (!res.ok) {
@@ -41,7 +41,7 @@ export default function useProduct() {
         }
 
         loadProduct();
-    }, [id, API, token]);
+    }, [id, API]);
 
     return { product, loading, error, id };
 }

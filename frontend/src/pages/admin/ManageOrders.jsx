@@ -5,7 +5,7 @@ import ErrorMessage from "../../components/Loading"
 const ManageOrders = () => {
 
     const API = import.meta.env.VITE_API_URL;
-    const token = localStorage.getItem("token");
+    
     const [orders, setOrders] = useState([]);
     const [editedOrders, setEditedOrders] = useState({});
     const [selectedOrder, setSelectedOrder] = useState(null);
@@ -32,7 +32,7 @@ const ManageOrders = () => {
     async function loadOrderDetails(orderId) {
         try {
             const res = await fetch(`${API}/orders/${orderId}`, {
-                headers: { "Authorization": `Bearer ${token}` }
+                credentials: 'include',
             });
 
             if (!res.ok) {
@@ -53,7 +53,8 @@ const ManageOrders = () => {
         try {
             const res = await fetch(`${API}/orders/${orderId}`, {
                 method: "PUT",
-                headers: { "Content-Type": "application/json", "Authorization": `Bearer ${token}` },
+                headers: { "Content-Type": "application/json" },
+                credentials: 'include',
                 body: JSON.stringify({ status: newStatus })
             });
 
@@ -90,7 +91,7 @@ const ManageOrders = () => {
         async function loadOrders() {
             try {
                 const res = await fetch(`${API}/orders/`, {
-                    headers: { "Authorization": `Bearer ${token}` }
+                    credentials: 'include',
                 });
 
                 if (!res.ok) {
@@ -112,7 +113,7 @@ const ManageOrders = () => {
 
         loadOrders();
 
-    }, [API, token]);
+    }, [API]);
 
     return (
         <>

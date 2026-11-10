@@ -16,10 +16,10 @@ export default function useImport() {
         setResult(null);
 
         try {
-            const token = localStorage.getItem("token");
+            
             const res = await fetch(`${API}/import/${format}`, {
                 method: "POST",
-                headers: { "Authorization": `Bearer ${token}` },
+                credentials: 'include',
                 signal: AbortSignal.timeout(TIMEOUT_MS),
             });
 

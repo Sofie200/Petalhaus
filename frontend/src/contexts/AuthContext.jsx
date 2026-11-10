@@ -1,51 +1,45 @@
 import { createContext, useState, useEffect } from "react";
-import { jwtDecode } from "jwt-decode";
 
+const API = import.meta.env.VITE_API_URL;
 export const AuthContext = createContext();
 
 export function AuthProvider({ children }) {
     const [user, setUser] = useState(undefined);
 
-    const login = (token) => {
-        localStorage.setItem("token", token);
+    const login = (userData) => setUser(userData);
 
-        const decoded = jwtDecode(token);
-        console.log(decoded);
-        setUser({
-            user_id: decoded.user_id,
-            username: decoded.username,
-            role: decoded.role
-        });
-    };
-
-    const logout = () => {
-        setUser(null);
-        localStorage.removeItem("token");
-    };
+    async function logout() {
+        try {
+            await fetch(`${API}/login/logout`, {
+                method: 'POST',
+                credentials: 'include',
+            });
+        } finally {
+            setUser(null);
+        }
+    }
 
     useEffect(() => {
-        const token = localStorage.getItem("token");
-        if (!token) return;
 
-        try {
-            const decoded = jwtDecode(token);
+        async function getMe() { 
+            
+            try {
+                const response = await fetch(`${API}/user/me`, {
+                    credentials: 'include',
+                })
 
-            // Token expired
-            if (decoded.exp * 1000 < Date.now()) {
-                logout();
-                return;
+                if (response.ok){
+                    setUser(await response.json());
+                }else{
+                    setUser(null);
+                }
+
+            } catch {
+                setUser(null);
             }
+        };
 
-            // Token valid
-            setUser({
-                user_id: decoded.user_id,
-                username: decoded.username,
-                role: decoded.role
-            });
-
-        } catch {
-            logout();
-        }
+        getMe();
     }, []);
 
     return (

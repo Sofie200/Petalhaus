@@ -4,6 +4,15 @@ import { verifyToken } from "../_middleware/verifyToken.js";
 
 const userRouter = express.Router();
 
+
+userRouter.get("/me", verifyToken, (req, res) => { 
+    res.json({
+        user_id: req.user.user_id,
+        username: req.user.username,
+        role: req.user.role
+    });
+});
+
 /* --- GET USER BY ID --- */
 userRouter.get("/:id", verifyToken, async (req, res, next) => {
     try {

@@ -2,6 +2,13 @@ import express from "express";
 import { pool } from "../_db/pool.js";
 import jwt from "jsonwebtoken";
 
+const COOKIE_OPTIONS = {
+    httpOnly: true,
+    sameSite: 'lax',
+    secure: process.env.VERCEL === '1',
+    maxAge: (8 * 60 * 60 * 1000)
+}
+
 const loginRouter = express.Router();
 
 loginRouter.post("/", async (req, res, next) => {
@@ -30,20 +37,28 @@ loginRouter.post("/", async (req, res, next) => {
                 role: user.role
             },
             process.env.JWT_SECRET,
-            { expiresIn: "2h" }
+            { expiresIn: "8h" }
         );
+
+        res.cookie('TokenCookie', token, COOKIE_OPTIONS);
 
         return res.json({
             success: true,
             user_id: user.id,
             username: user.first_name,
-            role: user.role,
-            token: token
+            role: user.role
         });
 
     } catch (err) {
         next(err);
     }
+});
+
+loginRouter.post("/logout", (req, res) => {
+
+    res.clearCookie('TokenCookie', COOKIE_OPTIONS);
+    return res.json({ success: true });
+
 });
 
 export default loginRouter;

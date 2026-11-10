@@ -6,7 +6,6 @@ import Loading from "./Loading";
 const UserDetails = () => {
 
     const API = import.meta.env.VITE_API_URL;
-    const token = localStorage.getItem("token");
     const { user } = useAuth();
     const [userInfo, setUserInfo] = useState(null);
     const [error, setError] = useState(null);
@@ -17,9 +16,7 @@ const UserDetails = () => {
         async function loadUserInfo() {
             try {
                 const res = await fetch(`${API}/user/${user.user_id}`, {
-                    headers: {
-                        "Authorization": `Bearer ${token}`
-                    }
+                    credentials: 'include',
                 });
 
                 const data = await res.json();
@@ -42,7 +39,7 @@ const UserDetails = () => {
 
         loadUserInfo();
 
-    }, [API, user?.user_id, token]);
+    }, [API, user?.user_id]);
 
     return (
         <div>
