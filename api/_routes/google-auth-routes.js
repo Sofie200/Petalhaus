@@ -181,7 +181,7 @@ async function linkAccount(req, res, google) {
     if (owner && owner.id !== me.user_id) return fail(res, 'google_in_use', '/profile')
 
     await pool.query(
-        'UPDATE user_ SET google_sub = $1, pw = NULL WHERE id = $2',
+        'UPDATE user_ SET google_sub = $1, pw = NULL, pw_hash = NULL WHERE id = $2',
         [google.sub, me.user_id]
     )
     return res.redirect('/profile?linked=1')

@@ -19,13 +19,13 @@ loginRouter.post("/", async (req, res, next) => {
             return res.status(401).json({ error: "Fel e-postadress eller lösenord" });
         }
 
-        if (user.pw === null) {
+        if (user.pw_hash === null) {
             return res.status(401).json({
                 error: "Det här kontot använder Google-inloggning. Logga in med Google.",
             });
         }
 
-        if (!(await bcrypt.compare(password ?? "", user.pw))) {
+        if (!(await bcrypt.compare(password ?? "", user.pw_hash))) {
             return res.status(401).json({ error: "Fel e-postadress eller lösenord" });
         }
 

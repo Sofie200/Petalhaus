@@ -11,7 +11,7 @@ userRouter.get("/me", verifyToken, async (req, res, next) => {
         const { rows: [user] } = await pool.query(
             `SELECT id, first_name, role,
                     google_sub IS NOT NULL AS has_google,
-                    pw IS NOT NULL         AS has_password
+                    pw_hash IS NOT NULL         AS has_password
              FROM user_ WHERE id = $1`,
             [req.user.user_id]
         );
