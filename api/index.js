@@ -16,7 +16,6 @@ import imageRouter from "./_routes/image-routes.js";
 import shippingRouter from "./_routes/shipping-routes.js";
 import googleAuthRouter from "./_routes/google-auth-routes.js";
 import registerRouter from "./_routes/register-routes.js";
-import ordersRouter from "./_routes/orders.js";
 
 const app = express();
 const port = process.env.PORT || 3000;
@@ -47,7 +46,6 @@ app.use('/api/checkout', checkoutRouter);
 app.use('/api/image', imageRouter);
 app.use('/api/shipping', shippingRouter);
 app.use('/api/auth/google', googleAuthRouter);
-app.use('/api/orders', ordersRouter);
 
 // 404 handler
 app.use((req, res) => {
