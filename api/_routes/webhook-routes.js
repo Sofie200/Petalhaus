@@ -1,6 +1,9 @@
 import express, { Router } from 'express'
 import { pool } from '../_db/pool.js'
 import { verifyWebhook } from '../_integrations/paymentAdapter.js'
+import { getOrderWithItems } from '../_lib/getOrderWithItems.js'
+import { orderConfirmation } from '../_lib/orderConfirmation.js'
+import { sendEmail } from '../_integrations/emailAdapter.js'
 
 const router = Router()
 
@@ -73,6 +76,24 @@ router.post('/', express.raw({ type: 'application/json' }), async (req, res) => 
 					updated ? '[WEBHOOK] Order paid:' : '[WEBHOOK] Already paid, skipped:',
 					session.client_reference_id
 				)
+
+				if (updated) {
+					try {
+						const order = await getOrderWithItems(session.client_reference_id)
+						const { subject, html, text } = orderConfirmation(order)
+						const emailId = await sendEmail({
+							to: order.email,
+							subject,
+							html,
+							text,
+							idempotencyKey: `order-confirmation/${order.id}`,
+						})
+						console.log('[EMAIL] Sent', subject, 'to', order.email, '– Resend id:', emailId)
+					} catch (err) {
+						console.error('[EMAIL] Failed for order', session.client_reference_id, err)
+					}
+				}
+
 				break
 			}
 
