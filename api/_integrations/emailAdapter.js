@@ -1,8 +1,14 @@
+import { z } from 'zod'
+
 // Docs: https://resend.com/docs/api-reference/emails/send-email
 //       https://resend.com/docs/api-reference/errors
 
 const API_KEY = process.env.RESEND_API_KEY
 const FROM = process.env.EMAIL_FROM // e.g. Hoodie Shop <onboarding@resend.dev>
+
+const ResendAnswer = z.object({
+  id: z.string(),
+})
 
 // In your shop:
 // Add Idempotency key to prevent sending same order confirmation email multiple times by accident. Lasts 24h.
@@ -35,9 +41,10 @@ export async function sendEmail({ to, subject, html, text, idempotencyKey }) {
 
   if (!response.ok) throw new Error(`Resend answered ${response.status}: ${answer.message}`)
 
-  // In your shop: validate the answer with Zod before you use it.
   // Resend's id for the e-mail – you find it under Emails in Resend.
   // Labb 8: logging it is enough. In a real shop: often saved on the order (e.g. confirmation_email_id),
   // to find the e-mail when a customer says "I got no confirmation".
-  return answer.id
+  
+  const { id } = ResendAnswer.parse(answer)
+  return id
 }
