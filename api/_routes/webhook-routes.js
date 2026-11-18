@@ -37,6 +37,13 @@ async function markPaid(orderId) {
 			[orderId]
 		)
 
+		// The order is paid → empty the customer's cart, in the same transaction
+		await client.query(
+			`DELETE FROM cart_item
+	 WHERE user_id = (SELECT user_id FROM order_ WHERE id = $1)`,
+			[orderId]
+		)
+
 		await client.query('COMMIT')
 		return true
 	} catch (err) {
