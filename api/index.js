@@ -2,6 +2,7 @@ import express from "express";
 import cors from "cors";
 import cookieParser from "cookie-parser";
 import loginRouter from "./_routes/login-routes.js";
+import registerRouter from "./_routes/register-routes.js";
 import productRouter from "./_routes/product-routes.js";
 import cartRouter from "./_routes/cart-routes.js";
 import userRouter from "./_routes/user-routes.js";
@@ -15,7 +16,7 @@ import checkoutRouter from "./_routes/checkout-routes.js";
 import imageRouter from "./_routes/image-routes.js";
 import shippingRouter from "./_routes/shipping-routes.js";
 import googleAuthRouter from "./_routes/google-auth-routes.js";
-import registerRouter from "./_routes/register-routes.js";
+import githubAuthRouter from "./_routes/github-auth-routes.js";
 
 const app = express();
 const port = process.env.PORT || 3000;
@@ -46,6 +47,7 @@ app.use('/api/checkout', checkoutRouter);
 app.use('/api/image', imageRouter);
 app.use('/api/shipping', shippingRouter);
 app.use('/api/auth/google', googleAuthRouter);
+app.use('/api/auth/github', githubAuthRouter);
 
 // 404 handler
 app.use((req, res) => {

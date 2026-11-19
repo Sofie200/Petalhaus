@@ -75,7 +75,7 @@ ul{
     justify-content: flex-end;
     align-items: center;
     padding-top: 10px;
-    gap: 10px;
+    gap: 15px;
 }
 
 .currency-select{
@@ -592,21 +592,144 @@ th {
     color: var(--color-accent);
 }
 
-.google-login {
-    display: block;
-    padding: 10px 14px;
-    text-align: center;
-    color: var(--color-text);
-    border: 1px solid var(--color-secondary);
-    border-radius: var(--radius-md);
-    font-family: var(--font-elegant);
-    font-size: 0.95rem;
-    letter-spacing: 1.5px;
+/* --- Social logins (Google, GitHub) --- */
+.social-logins {
+    display: flex;
+    flex-direction: column;
+    gap: 10px;
 }
 
-.google-login:hover {
+.social-login {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 10px;
+    padding: 11px 16px;
+    border-radius: var(--radius-md);
+    font-family: var(--font-main);
+    font-size: 0.92rem;
+    font-weight: 500;
+    letter-spacing: 0.3px;
+    text-decoration: none;
+    transition: background-color 0.2s ease, border-color 0.2s ease, color 0.2s ease, transform 0.1s ease;
+}
+
+.social-login:active {
+    transform: translateY(1px);
+}
+
+.social-login:focus-visible {
+    outline: 2px solid var(--color-accent);
+    outline-offset: 2px;
+}
+
+.social-login-icon {
+    font-size: 1.15rem;
+}
+
+.social-login--google {
+    color: var(--color-text);
+    background: transparent;
+    border: 1px solid var(--border-soft);
+}
+
+.social-login--google:hover {
+    border-color: var(--color-secondary);
+    background: rgba(63, 166, 139, 0.08);
+    color: var(--color-text);
+}
+
+.social-login--github {
+    color: var(--color-text);
+    background: transparent;
+    border: 1px solid var(--border-soft);
+}
+
+.social-login--github:hover {
+    border-color: var(--color-secondary);
+    background: rgba(63, 166, 139, 0.08);
+    color: var(--color-text);
+}
+
+.social-login-tag {
+    padding: 1px 8px;
+    border-radius: 999px;
+    background: rgba(250, 199, 72, 0.15);
     color: var(--color-accent);
-    border-color: var(--color-accent);
+    font-size: 0.7rem;
+    letter-spacing: 0.5px;
+    text-transform: uppercase;
+}
+
+/* --- Header badge when logged in with GitHub --- */
+.auth-chip {
+    display: inline-flex;
+    align-items: center;
+    gap: 8px;
+    padding: 5px 12px 5px 10px;
+    border-radius: 999px;
+    font-size: 0.8rem;
+    font-weight: 500;
+    text-decoration: none;
+    white-space: nowrap;
+    transition: background-color 0.2s ease;
+}
+
+.auth-chip--github {
+    color: var(--color-text);
+    background: transparent;
+    border: 1px solid var(--border-soft);
+}
+
+.auth-chip--github:hover {
+    border-color: var(--color-secondary);
+    background: rgba(63, 166, 139, 0.08);
+    color: var(--color-text);
+}
+
+.auth-chip-icon {
+    font-size: 1.05rem;
+}
+
+.auth-chip-role {
+    padding: 0 7px;
+    border-radius: 999px;
+    background: var(--color-accent);
+    color: var(--color-bg);
+    font-size: 0.65rem;
+    font-weight: 700;
+    letter-spacing: 0.5px;
+    text-transform: uppercase;
+}
+
+/* --- "Logged in with GitHub" on My pages --- */
+.login-method {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    margin-bottom: 24px;
+    padding: 14px 18px;
+    border-radius: var(--radius-md);
+}
+
+.login-method p {
+    margin: 0;
+    flex: 1;
+}
+
+.login-method--github {
+    color: var(--color-text);
+    background: var(--bg-card);
+    border: 1px solid var(--border-soft);
+    border-left: 3px solid var(--color-accent);
+}
+
+.login-method--github .login-method-icon {
+    color: var(--color-secondary);
+}
+
+.login-method-icon {
+    font-size: 1.6rem;
 }
 
 .login-divider {

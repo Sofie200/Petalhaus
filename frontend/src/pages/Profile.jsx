@@ -1,6 +1,8 @@
 import { useEffect, useState } from 'react';
 import { Link, useSearchParams } from 'react-router-dom';
 import { useAuth } from '../hooks/useAuth';
+import { FontAwesomeIcon } from '@fortawesome/react-fontawesome';
+import { faGithub } from '@fortawesome/free-brands-svg-icons';
 import { useCurrency } from '../contexts/CurrencyContext';
 import Loading from '../components/Loading';
 import ErrorMessage from '../components/ErrorMessage';
@@ -55,6 +57,16 @@ const Profile = () => {
                 </div>
                 <button className="btn-outline" onClick={logout}>Logga ut</button>
             </div>
+
+            {user?.hasGithub && (
+                <div className="login-method login-method--github" role="status">
+                    <FontAwesomeIcon icon={faGithub} className="login-method-icon" />
+                    <p>
+                        Inloggad med GitHub som <strong>@{user.username}</strong>
+                    </p>
+                    {user.role === 'admin' && <span className="pill">Admin</span>}
+                </div>
+            )}
 
             {searchParams.get('linked') && (
                 <p className="my-pages-notice" role="status">

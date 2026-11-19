@@ -1,5 +1,7 @@
 import { useEffect, useRef, useState } from "react";
 import { useAuth } from "../hooks/useAuth";
+import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
+import { faGoogle, faGithub } from "@fortawesome/free-brands-svg-icons";
 
 const API = import.meta.env.VITE_API_URL;
 
@@ -129,9 +131,18 @@ export default function LoginModal({ open, onClose, notice }) {
                     <>
                         <p className="login-modal-lead">{lead}</p>
 
-                        <a className="google-login" href={`${API}/auth/google`}>
-                            Fortsätt med Google
-                        </a>
+                        <div className="social-logins">
+                            <a className="social-login social-login--google" href={`${API}/auth/google`}>
+                                <FontAwesomeIcon icon={faGoogle} className="social-login-icon" />
+                                <span>Fortsätt med Google</span>
+                            </a>
+
+                            <a className="social-login social-login--github" href={`${API}/auth/github`}>
+                                <FontAwesomeIcon icon={faGithub} className="social-login-icon" />
+                                <span>Fortsätt med GitHub</span>
+                                <span className="social-login-tag">Admin</span>
+                            </a>
+                        </div>
 
                         <div className="login-divider" aria-hidden="true">eller</div>
                     </>

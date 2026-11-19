@@ -3,6 +3,7 @@ import { useState } from "react";
 import { useAuth } from "../hooks/useAuth";
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
 import { faCircleUser } from "@fortawesome/free-solid-svg-icons";
+import { faGithub } from "@fortawesome/free-brands-svg-icons";
 import LoginModal from "./LoginModal";
 
 export default function Login() {
@@ -12,6 +13,22 @@ export default function Login() {
 
     // Still asking the server who is logged in – show nothing instead of flashing the button
     if (user === undefined) return null;
+
+    // Logged in with GitHub → show it clearly, with the GitHub username
+    if (user?.hasGithub) {
+        return (
+            <Link
+                to="/profile"
+                className="auth-chip auth-chip--github"
+                title={`Inloggad med GitHub som ${user.username}`}
+                aria-label={`Mina sidor – inloggad med GitHub som ${user.username}`}
+            >
+                <FontAwesomeIcon icon={faGithub} className="auth-chip-icon" />
+                <span className="auth-chip-name">{user.username}</span>
+                {user.role === "admin" && <span className="auth-chip-role">Admin</span>}
+            </Link>
+        );
+    }
 
     if (user) {
         return (
