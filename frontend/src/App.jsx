@@ -16,6 +16,7 @@ import Import from './pages/admin/Import';
 import Checkout from './pages/Checkout';
 import Profile from './pages/Profile';
 import ManageOrders from './pages/admin/ManageOrders';
+import Issues from './pages/admin/Issues';
 import ReturnPage from './components/ReturnPage';
 import Unauthorized from './pages/Unauthorized'
 import ProtectedRoute from './components/admin/ProtectedRoute';
@@ -57,6 +58,7 @@ function App() {
 								<Route path="/admin/manage-orders/" element={<ProtectedRoute role={"admin"}><ManageOrders /></ProtectedRoute>} />
 								<Route path="/admin/import" element={<ProtectedRoute role={"admin"}><Import /></ProtectedRoute>} />
 								<Route path="/admin/index-db" element={<ProtectedRoute role={"admin"}><IndexDB /></ProtectedRoute>} />
+								<Route path="/admin/issues" element={<ProtectedRoute role={"admin"}><Issues /></ProtectedRoute>} />
 							</Routes>
 						</div>
 					</main>

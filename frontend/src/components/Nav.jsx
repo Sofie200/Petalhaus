@@ -16,6 +16,8 @@ const Nav = () => {
                     <Link to="/admin/import">Importera från CSV/XML</Link>
                     &nbsp;|&nbsp;
                     <Link to="/admin/index-db">Indexera om databasen</Link>
+                    &nbsp;|&nbsp;
+                    <Link to="/admin/issues">GitHub Issues</Link>
                 </nav>
             )}
         </div>

@@ -17,6 +17,7 @@ import imageRouter from "./_routes/image-routes.js";
 import shippingRouter from "./_routes/shipping-routes.js";
 import googleAuthRouter from "./_routes/google-auth-routes.js";
 import githubAuthRouter from "./_routes/github-auth-routes.js";
+import issuesRouter from "./_routes/issues-routes.js"
 
 const app = express();
 const port = process.env.PORT || 3000;
@@ -48,6 +49,7 @@ app.use('/api/image', imageRouter);
 app.use('/api/shipping', shippingRouter);
 app.use('/api/auth/google', googleAuthRouter);
 app.use('/api/auth/github', githubAuthRouter);
+app.use('/api/admin/issues', issuesRouter);
 
 // 404 handler
 app.use((req, res) => {

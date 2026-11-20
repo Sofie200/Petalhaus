@@ -1,9 +1,21 @@
+import { json, unknown, z } from 'zod';
+
 const CLIENT_ID = process.env.GITHUB_CLIENT_ID
 const CLIENT_SECRET = process.env.GITHUB_CLIENT_SECRET
 const CALLBACK_URL = process.env.GITHUB_CALLBACK_URL
 const REPO = process.env.GITHUB_REPO // owner/repo, e.g. anna-k/hoodie-shop
 // The SHOP'S own token – a fine-grained personal access token with Issues: Read and write, only for REPO
 const SHOP_TOKEN = process.env.GITHUB_ISSUES_TOKEN
+
+// What we need from GitHub's answers – everything else is ignored
+const TokenAnswer = z.object({
+  access_token: z.string().min(1),
+})
+
+const GitHubUser = z.object({
+  id: z.number().int().positive(),
+  login: z.string().min(1),
+})
 
 /* ===== LOGIN – with the ADMIN'S GitHub account ===== */
 
@@ -49,9 +61,10 @@ export async function exchangeCode(code /* , codeVerifier */) { // PKCE
   })
   const answer = await response.json()
   // GitHub answers 200 even when the code is wrong – the error is in the body, e.g. "bad_verification_code"
-  if (!answer.access_token) throw new Error(`GitHub refused the code: ${answer.error}`)
-  // In your shop: validate the answer with Zod before you use it.
-  return answer.access_token // used ONCE, in getUser() – then thrown away, as Google's tokens in L9
+  const parsed = TokenAnswer.safeParse(answer)
+  // GitHub answers 200 even when the code is wrong – then there's no access_token, only e.g. "bad_verification_code"
+  if (!parsed.success) throw new Error(`GitHub refused the code: ${answer.error ?? 'unexpected answer'}`)
+  return parsed.data.access_token // used ONCE, in getUser() – then thrown away
 }
 
 /* --- 3. Who is it? The admin's access token → GitHub's user --- */
@@ -65,12 +78,8 @@ export async function getUser(accessToken) {
     signal: AbortSignal.timeout(5_000),
   })
   if (!response.ok) throw new Error(`GitHub answered ${response.status}`)
-  const user = await response.json()
-
-  return {
-    id: user.id,
-    login: user.login,
-  }
+  const { id, login } = GitHubUser.parse(await response.json())
+  return { id, login }
 }
 
 /* ===== ISSUES – with the SHOP'S token, so GitHub shows the shop's account as the author ===== */
@@ -87,8 +96,32 @@ export async function getUser(accessToken) {
  * @param {string} body
  * @returns {Promise<{ number: number, title: string, url: string }>}
  */
+// What we need from GitHub's answer when an issue is created
+const CreatedIssue = z.object({
+  number: z.number(),
+  title: z.string(),
+  html_url: z.string().url(),
+})
+
 export async function createIssue(title, body) {
-  throw new Error('createIssue() is not done yet')
+  const response = await fetch(`https://api.github.com/repos/${REPO}/issues`, {
+    method: 'POST',
+    headers: {
+      'Authorization': `Bearer ${ SHOP_TOKEN }`, 
+      'Accept': 'application/vnd.github+json', 
+      'Content-Type': 'application/json'
+    },
+    body: JSON.stringify({ title, body }),
+    signal: AbortSignal.timeout(5_000),
+  });
+
+  if(!response.ok){
+    throw Error(`GitHub answered ${response.status}`);
+  }
+
+  const parsedRes = CreatedIssue.parse(await response.json());
+
+  return { number: parsedRes.number, title: parsedRes.title, url: parsedRes.html_url }
 }
 
 // Docs: https://docs.github.com/en/rest/issues/issues#list-repository-issues
@@ -96,6 +129,32 @@ export async function createIssue(title, body) {
 /**
  * @returns {Promise<{ number: number, title: string, url: string, author: string }[]>}
  */
+const ListedIssue = z.object({
+  number: z.number(),
+  title: z.string(),
+  html_url: z.string().url(),
+  user: z.object({ login: z.string() }),
+  pull_request: z.unknown().optional(), // only there on pull requests
+})
+
 export async function listOpenIssues() {
-  throw new Error('listOpenIssues() is not done yet')
+
+  const response = await fetch(`https://api.github.com/repos/${REPO}/issues?state=open`, {
+    headers: { Authorization: `Bearer ${SHOP_TOKEN}`, Accept: 'application/vnd.github+json' },
+    signal: AbortSignal.timeout(5_000),
+  })
+
+  if (!response.ok) throw new Error(`GitHub answered ${response.status}`)
+
+  const parsedRes = z.array(ListedIssue).parse(await response.json());
+
+  const issues = parsedRes.filter((issue) => !issue.pull_request);
+
+  return issues.map((issue) => ({
+    number: issue.number,
+    title: issue.title,
+    author: issue.user.login,
+    url: issue.html_url, 
+  }))
+
 }

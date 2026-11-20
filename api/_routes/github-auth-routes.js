@@ -41,12 +41,12 @@ router.get('/callback', async (req, res) => {
 
   // The user clicked "Cancel" on GitHub
   if (error) {
-    res.redirect('/?error=cancelled')
+    res.redirect('/?authError=cancelled')
     return
   }
   // Not the login WE started → stop (CSRF)
   if (!state || state !== oauth_state) {
-    res.redirect('/?error=state')
+    res.redirect('/?authError=invalid_state')
     return
   }
 
@@ -58,8 +58,8 @@ router.get('/callback', async (req, res) => {
     // The admin's access token isn't saved – the issues use the shop's own token.
 
     if (!ADMINS.includes(user.login)) {
-      res.redirect('/?error=not-admin')
-      
+      console.log('[OAUTH] Not an admin:', user.login)
+      res.redirect('/?authError=github_not_admin')
       return
     }
     // 4. Create or update the admin in OUR db, by github_id
@@ -74,11 +74,11 @@ router.get('/callback', async (req, res) => {
     // 5. The shop's normal login cookie – the same as password and Google login
     setAuthCookie(res, admin)
     console.log('[OAUTH] 4. Logged in as admin:', user.login)
-    res.redirect('/')
+    res.redirect('/admin/issues');
 
   } catch (err) {
     console.error(err)
-    res.redirect('/?error=github')
+    res.redirect('/?authError=github_error')
   }
 })
 

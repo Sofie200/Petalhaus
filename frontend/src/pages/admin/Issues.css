@@ -1,0 +1,264 @@
+/* ============================
+   ADMIN – GITHUB ISSUES
+============================ */
+.issues-page {
+    max-width: 760px;
+    margin: 0 auto;
+}
+
+/* --- Header --- */
+.issues-header {
+    display: flex;
+    align-items: center;
+    gap: 18px;
+    margin-bottom: 28px;
+}
+
+.issues-header-icon {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    flex-shrink: 0;
+    width: 56px;
+    height: 56px;
+    border-radius: 50%;
+    border: 1px solid var(--border-soft);
+    color: var(--color-secondary);
+    font-size: 1.8rem;
+}
+
+.issues-eyebrow {
+    margin: 0;
+    color: var(--color-accent);
+    font-size: 0.75rem;
+    letter-spacing: 2px;
+    text-transform: uppercase;
+}
+
+.issues-header h2 {
+    margin: 2px 0 4px;
+}
+
+.issues-lead {
+    margin: 0;
+    color: var(--color-muted);
+    font-size: 0.95rem;
+}
+
+/* --- One column: the form on top, the list below --- */
+.issues-layout {
+    display: flex;
+    flex-direction: column;
+    gap: 24px;
+}
+
+.issues-card {
+    display: block; /* the global "section" rule is flex – here we want the heading above the content */
+    padding: 24px;
+    background: var(--bg-card);
+    border: 1px solid var(--border-soft);
+    border-radius: var(--radius-lg);
+    box-shadow: var(--shadow-soft);
+}
+
+.issues-card h3 {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    margin: 0 0 18px;
+    font-size: 1.2rem;
+}
+
+/* --- The form box: a darker card with lighter fields --- */
+.issues-card--inverted {
+    background: #0a2420;
+    border-color: var(--border-soft);
+}
+
+.issues-card--inverted form {
+    max-width: none;
+}
+
+.issues-card--inverted input:not([type="file"], [type="radio"]),
+.issues-card--inverted textarea {
+    background: var(--bg-card-hover);
+    border-color: rgba(63, 166, 139, 0.35);
+}
+
+.issues-card--inverted input:not([type="file"], [type="radio"]):focus,
+.issues-card--inverted textarea:focus {
+    background: #1d574c;
+    border-color: var(--color-secondary);
+}
+
+/* --- Form extras --- */
+.issues-counter {
+    align-self: flex-end;
+    margin: -10px 0 8px;
+    color: var(--color-muted);
+    font-size: 0.75rem;
+}
+
+.issues-reporter {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    margin: 0 0 12px;
+    color: var(--color-muted);
+    font-size: 0.85rem;
+}
+
+.issues-reporter strong {
+    color: var(--color-text);
+}
+
+.issues-error,
+.issues-success {
+    display: flex;
+    align-items: flex-start;
+    gap: 10px;
+    margin: 0 0 12px;
+    padding: 10px 14px;
+    border-radius: var(--radius-md);
+    font-size: 0.9rem;
+    line-height: 1.45;
+}
+
+.issues-error {
+    background: rgba(142, 47, 47, 0.25);
+    border-left: 3px solid #c25555;
+}
+
+.issues-success {
+    background: rgba(63, 166, 139, 0.12);
+    border-left: 3px solid var(--color-secondary);
+}
+
+.issues-success svg {
+    margin-top: 3px;
+    color: var(--color-secondary);
+}
+
+.issues-success a {
+    color: var(--color-accent);
+    text-decoration: underline;
+}
+
+/* --- List --- */
+.issues-list-head {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    margin-bottom: 6px;
+}
+
+.issues-list-head h3 {
+    margin: 0;
+}
+
+.issues-count {
+    min-width: 24px;
+    padding: 1px 9px;
+    border-radius: 999px;
+    background: rgba(63, 166, 139, 0.15);
+    color: var(--color-secondary);
+    font-family: var(--font-main);
+    font-size: 0.8rem;
+    font-weight: 600;
+    text-align: center;
+}
+
+.issues-refresh,
+.issues-refresh:hover {
+    padding: 6px 10px;
+    background: transparent;
+    border: 1px solid var(--border-soft);
+    box-shadow: none;
+    color: var(--color-muted);
+}
+
+.issues-refresh:hover:not(:disabled) {
+    border-color: var(--color-secondary);
+    color: var(--color-secondary);
+}
+
+.issues-list {
+    margin: 12px 0 0;
+    padding: 0;
+    list-style: none;
+}
+
+.issues-list li + li {
+    border-top: 1px solid var(--border-soft);
+}
+
+.issue-row {
+    display: flex;
+    align-items: center;
+    gap: 14px;
+    padding: 14px 8px;
+    border-radius: var(--radius-md);
+    color: var(--color-text);
+    text-decoration: none;
+    transition: background-color 0.15s ease;
+}
+
+.issue-row:hover {
+    background: var(--bg-card-hover);
+}
+
+.issue-row:focus-visible {
+    outline: 2px solid var(--color-accent);
+    outline-offset: 2px;
+}
+
+.issue-number {
+    flex-shrink: 0;
+    min-width: 42px;
+    color: var(--color-secondary);
+    font-weight: 600;
+    font-variant-numeric: tabular-nums;
+}
+
+.issue-main {
+    display: flex;
+    flex-direction: column;
+    gap: 2px;
+    flex: 1;
+    min-width: 0;
+}
+
+.issue-title {
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+    font-weight: 500;
+}
+
+.issue-author {
+    color: var(--color-muted);
+    font-size: 0.8rem;
+}
+
+.issue-open {
+    flex-shrink: 0;
+    color: var(--color-muted);
+    font-size: 0.85rem;
+    transition: color 0.15s ease;
+}
+
+.issue-row:hover .issue-open {
+    color: var(--color-accent);
+}
+
+.issues-empty {
+    margin: 18px 0 4px;
+    color: var(--color-muted);
+}
+
+/* --- Mobile --- */
+@media (max-width: 800px) {
+    .issues-card {
+        padding: 20px 16px;
+    }
+}

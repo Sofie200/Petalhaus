@@ -2,11 +2,18 @@
 import { Router } from 'express'
 import { createIssue, listOpenIssues } from '../_integrations/githubAdapter.js'
 import { requireAdmin } from '../_middleware/requireAdmin.js'
+import { verifyToken } from '../_middleware/verifyToken.js'
+import { z } from 'zod'
 
 const router = Router()
 
+const NewIssue = z.object({
+  title: z.string().trim().min(1, 'Skriv en rubrik').max(200, 'Rubriken är för lång'),
+  description: z.string().trim().min(1, 'Beskriv problemet').max(5000, 'Beskrivningen är för lång'),
+})
+
 /* --- GET /api/admin/issues → the open issues in the shop's repo --- */
-router.get('/', requireAdmin, async (_req, res) => {
+router.get('/', verifyToken, requireAdmin, async (_req, res) => {
   try {
     res.json(await listOpenIssues())
   } catch (err) {
@@ -17,12 +24,19 @@ router.get('/', requireAdmin, async (_req, res) => {
 
 /* --- POST /api/admin/issues  { title, description } → the new issue --- */
 // In your shop: validate the body with Zod.
-router.post('/', requireAdmin, async (req, res) => {
-  const { title, description } = req.body
+router.post('/', verifyToken, requireAdmin, async (req, res) => {
+  
+  const parsed = NewIssue.safeParse(req.body)
+  if (!parsed.success) {
+    res.status(400).json({ error: parsed.error.issues[0]?.message ?? 'Ogiltig issue' })
+    return
+  }
+  const { title, description } = parsed.data
+
   try {
     // GitHub shows the shop's account as the author – so the server writes who reported it
-    const issue = await createIssue(title, `${description}\n\n---\nReported by @${res.locals.admin.login} in the admin panel.`)
-    console.log(`[GITHUB] ${res.locals.admin.login} created issue #${issue.number}`)
+    const issue = await createIssue(title, `${description}\n\n---\nReported by @${req.user.username} in the admin panel.`)
+    console.log(`[GITHUB] ${req.user.username} created issue #${issue.number}`);
     res.status(201).json(issue)
   } catch (err) {
     console.error(err)
