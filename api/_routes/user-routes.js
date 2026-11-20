@@ -65,12 +65,12 @@ userRouter.get("/me/orders", verifyToken, async (req, res, next) => {
 /* --- GET USER BY ID --- */
 userRouter.get("/:id", verifyToken, async (req, res, next) => {
     try {
+        const user_id = req.params.id;
 
+        // Customers may only read their own details – admins may read anyone's
         if (Number(user_id) !== req.user.user_id && req.user.role !== "admin") {
             return res.status(403).json({ error: "Forbidden" });
         }
-        
-        const user_id = req.params.id;
 
         const result = await pool.query(
             `SELECT first_name, last_name, email, phone, street, postal_code, city FROM user_

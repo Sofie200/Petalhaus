@@ -10,8 +10,7 @@ const ResendAnswer = z.object({
   id: z.string(),
 })
 
-// In your shop:
-// Add Idempotency key to prevent sending same order confirmation email multiple times by accident. Lasts 24h.
+// Idempotency key: the same key within 24h → Resend sends the e-mail only once.
 // Docs: https://resend.com/docs/api-reference/emails/send-email#param-idempotency-key
 
 /**
@@ -20,6 +19,7 @@ const ResendAnswer = z.object({
  * @property {string} subject
  * @property {string} html
  * @property {string} text - the same content without HTML – for e-mail programs that don't show HTML, and for spam filters
+ * @property {string} [idempotencyKey] - e.g. order-confirmation/<order id>
  */
 
 /**
@@ -41,10 +41,7 @@ export async function sendEmail({ to, subject, html, text, idempotencyKey }) {
 
   if (!response.ok) throw new Error(`Resend answered ${response.status}: ${answer.message}`)
 
-  // Resend's id for the e-mail – you find it under Emails in Resend.
-  // Labb 8: logging it is enough. In a real shop: often saved on the order (e.g. confirmation_email_id),
-  // to find the e-mail when a customer says "I got no confirmation".
-  
+  // Resend's id for the e-mail – you find it under Emails in Resend
   const { id } = ResendAnswer.parse(answer)
   return id
 }

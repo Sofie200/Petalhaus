@@ -15,11 +15,11 @@
  * @property {OrderItem[]} items
  */
 
+// Customer data must never become HTML – < > & " ' are turned into harmless entities
 /**
- * @param {Order} order
- * @returns {{ subject: string, html: string, text: string }}
+ * @param {unknown} value
+ * @returns {string}
  */
-
 function escapeHtml(value) {
   return String(value)
     .replaceAll('&', '&amp;')
@@ -29,14 +29,14 @@ function escapeHtml(value) {
     .replaceAll("'", '&#39;')
 }
 
+/**
+ * @param {Order} order
+ * @returns {{ subject: string, html: string, text: string }}
+ */
 export function orderConfirmation(order) {
   const total = order.items.reduce((sum, item) => sum + item.quantity * item.price, 0)
 
   const subject = `Tack för din beställning! Order: ${order.id}`
-
-  // In your shop:
-  // 1. Show order.items in a <table>: product, quantity, price – and the total
-  // 2. Escape ALL data that comes from the user (name, e-mail, …) before it goes into the HTML
 
   const rows = order.items.map((item) => `
     <tr>

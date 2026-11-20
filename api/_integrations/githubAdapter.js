@@ -1,4 +1,4 @@
-import { json, unknown, z } from 'zod';
+import { z } from 'zod';
 
 const CLIENT_ID = process.env.GITHUB_CLIENT_ID
 const CLIENT_SECRET = process.env.GITHUB_CLIENT_SECRET

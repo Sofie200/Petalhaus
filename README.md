@@ -9,31 +9,49 @@ https://petalhaus-v2.vercel.app/
 3. `vercel env pull .env` och `npm run dev`
 
 ### Testkonton och nycklar (se .env.example)
+Hemliga nycklar finns bara i `.env` (lokalt) och i Vercels miljövariabler – aldrig i koden eller i webbläsaren. Bara variabler som börjar med `VITE_` hamnar i frontend, och de är inte hemliga.
+
 | Tjänst | Variabel | Backend/Frontend |
 |---|---|---|
 | **Leverantörs-API** (produktimport) | `IMPORT_API_KEY` | Backend |
+| **Frankfurter** (valutakurser) | `CURRENCY_API_URL` (config) | Backend |
+| | `CURRENCY_API_TIMEOUT_MS` (config) – timeout för anropet | Backend |
+| | `CURRENCY_CACHE_SECONDS` (config) – hur länge kurserna cachas | Backend |
 | **Algolia** (sök) | `ALGOLIA_APP_ID` (config) | Backend |
-| | `ALGOLIA_ADMIN_KEY` - får skriva till indexet | Backend |
-| | `ALGOLIA_SEARCH_KEY` - får bara söka | Backend |
+| | `ALGOLIA_ADMIN_KEY` – får skriva till indexet | Backend |
+| | `ALGOLIA_SEARCH_KEY` – får bara söka | Backend |
 | | `ALGOLIA_INDEX` (config) | Backend |
 | **Stripe** (betalning) | `STRIPE_SECRET_KEY` | Backend |
-| | `STRIPE_WEBHOOK_SECRET` | Backend |
-| | `VITE_STRIPE_PUBLISHABLE_KEY` | Frontend |
-| **Supabase** (produktbilder)  | `SUPABASE_URL` (config) | Backend |
+| | `STRIPE_WEBHOOK_SECRET` – en per webhook-endpoint (lokalt från `stripe listen`) | Backend |
+| | `VITE_STRIPE_PUBLISHABLE_KEY` – publik nyckel | Frontend |
+| **Supabase** (produktbilder) | `SUPABASE_URL` (config) | Backend |
 | | `SUPABASE_SECRET_KEY` | Backend |
 | | `SUPABASE_BUCKET` (config) | Backend |
 | **PostNord** (ombud och leveranstid) | `POSTNORD_API_KEY` | Backend |
 | | `POSTNORD_BASE_URL` (config) | Backend |
+| **Google** (kundinloggning, OAuth 2.0) | `GOOGLE_CLIENT_ID` (config) | Backend |
+| | `GOOGLE_CLIENT_SECRET` | Backend |
+| | `GOOGLE_REDIRECT_URI` (config) – måste stämma exakt med Google Cloud Console | Backend |
+| **Resend** (orderbekräftelse via e-post) | `RESEND_API_KEY` – behörighet *Sending access* | Backend |
+| | `EMAIL_FROM` (config) – avsändare, t.ex. `Petalhaus <order@petalhaus.se>` | Backend |
+| **GitHub** (admininloggning, OAuth 2.0) | `GITHUB_CLIENT_ID` (config) | Backend |
+| | `GITHUB_CLIENT_SECRET` | Backend |
+| | `GITHUB_CALLBACK_URL` (config) – måste stämma exakt med OAuth Appens Redirect URI | Backend |
+| | `ADMIN_GITHUB_LOGINS` (config) – kommaseparerade GitHub-användarnamn som blir admin | Backend |
+| **GitHub** (issues) | `GITHUB_ISSUES_TOKEN` – shoppens fine-grained token, *Issues: Read and write*, bara för shoppens repo, med utgångsdatum | Backend |
+| | `GITHUB_REPO` (config) – `ägare/repo` | Backend |
 
 ### Övriga inställningar
 
 | Variabel | Beskrivning | Var den hamnar |
 |---|---|---|
 | `DATABASE_URL` | Anslutning till PostgreSQL | Backend |
-| `JWT_SECRET` | Signerar inloggningstoken | Backend |
-| `CLIENT_URL` | Frontendens adress (används för CORS och av Stripe) | Backend |
+| `JWT_SECRET` | Signerar inloggningstoken (lösenord, Google och GitHub) | Backend |
+| `CLIENT_URL` | Frontendens adress (används för CORS och av Stripe som retur-URL) | Backend |
 | `SHOP_POSTAL_CODE` | Lagrets postnummer (för att beräkna leveranstid) | Backend |
-| `VITE_API_URL` | Backendens adress | Frontend |
+| `PORT` | Port för backend lokalt (standard 3000) | Backend |
+| `NODE_ENV` | `production` på Vercel – styr t.ex. `secure` på cookies | Backend |
+| `VITE_API_URL` | Backendens adress (`/api`, satt i `frontend/.env.production`) | Frontend |
 
 <br>
 
@@ -58,6 +76,18 @@ Jag testade varje anrop med min sandlådenyckel och jämförde med Swagger-dokum
 
 ### Slutsats
 AI:n gav en bra struktur (adapter, egna priser, validering, felhantering), men gissade fel på både sökvägar, parametrar och svarsformat. Det var först när anropen testades mot sandlådan och jämfördes med dokumentationen i portalen som integrationen blev rätt.
+
+<br/>
+
+## Labb 6 – Samma e-postadress hos ett lösenordskonto
+
+Kunder känns igen på Googles sub, aldrig på e-postadressen. Om någon loggar in med Google för första gången och e-postadressen redan finns hos ett lösenordskonto slås kontona inte ihop automatiskt. Kunden får i stället ett meddelande och inloggningen med lösenord öppnas direkt. Annars skulle vem som helst som kontrollerar ett Google-konto med samma adress kunna ta över ett befintligt konto. Den som vill använda Google kan själv koppla kontot under Mina sidor medan hen är inloggad med lösenord. Det kräver att hen bevisar att hen äger båda kontona.
+
+<br/>
+
+## Labb 7 - JWT eller Session
+
+Inloggning med JWT i httpOnly-cookie. Shoppen använder redan JWT för lösenords- och Google-inloggning, så GitHub-admins loggas in med samma TokenCookie. Servern behöver då ingen sessionslagring, vilket passar Vercels serverless-funktioner som inte delar minne mellan anrop. Cookien är httpOnly (JavaScript kan inte läsa den), secure på Vercel och sameSite: lax. GitHubs access token används en gång för att hämta användaren och sparas aldrig, så den når aldrig webbläsaren. Nackdelen med JWT är att den inte kan återkallas innan den går ut, och därför är livslängden 8 timmar.
 
 <br/>
 
