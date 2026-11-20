@@ -9,6 +9,7 @@ const router = Router()
 
 const GOOGLE_AUTH_URL = 'https://accounts.google.com/o/oauth2/v2/auth'
 const GOOGLE_TOKEN_URL = 'https://oauth2.googleapis.com/token'
+const TIMEOUT_MS = 5_000 // Google must answer the code exchange within 5 s
 
 // Short-lived cookie that carries state + PKCE verifier from start to callback
 const FLOW_COOKIE = 'GoogleFlow'
@@ -23,6 +24,11 @@ const FLOW_COOKIE_OPTIONS = {
 // Back to the shop with an error code that React turns into a readable message.
 // Relative URL = same origin as the callback (Vite proxy locally, Vercel in prod)
 const fail = (res, code, back = '/') => res.redirect(`${back}?authError=${code}`)
+
+// What we need from the token endpoint's answer – the ID token is all we use
+const TokenAnswer = z.object({
+    id_token: z.string().min(1),
+})
 
 // What we accept from Google's ID token
 const IdToken = z
@@ -108,12 +114,18 @@ router.get('/callback', async (req, res) => {
                 grant_type: 'authorization_code',
                 code_verifier: flow.verifier,
             }),
+            signal: AbortSignal.timeout(TIMEOUT_MS),
         })
         if (!tokenRes.ok) {
             console.error('[GOOGLE] Token exchange failed:', tokenRes.status, await tokenRes.text())
             return fail(res, 'google_error', back)
         }
-        const { id_token } = await tokenRes.json()
+        const tokenAnswer = TokenAnswer.safeParse(await tokenRes.json())
+        if (!tokenAnswer.success) {
+            console.error('[GOOGLE] Unexpected token answer:', z.prettifyError(tokenAnswer.error))
+            return fail(res, 'google_error', back)
+        }
+        const { id_token } = tokenAnswer.data
 
         // 5. Read the customer from the ID token (a JWT) and validate it
         const claims = IdToken.safeParse(jwt.decode(id_token))
@@ -127,6 +139,11 @@ router.get('/callback', async (req, res) => {
             ? await linkAccount(req, res, claims.data)
             : await loginWithGoogle(res, claims.data)
     } catch (err) {
+        // Google didn't answer in time → the customer gets "Google kunde inte logga in dig just nu"
+        if (err.name === 'TimeoutError') {
+            console.error(`[GOOGLE] No answer from Google within ${TIMEOUT_MS} ms`)
+            return fail(res, 'google_error', back)
+        }
         console.error('[GOOGLE] Callback failed:', err)
         return fail(res, 'server_error', back)
     }

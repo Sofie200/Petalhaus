@@ -1,4 +1,4 @@
-import { createContext, useContext, useEffect, useState } from "react";
+import { createContext, useContext, useEffect, useRef, useState } from "react";
 import { useAuth } from "../hooks/useAuth";
 
 const ShoppingCart = createContext(null);
@@ -18,8 +18,18 @@ export function ShoppingCartProvider({ children }) {
     const [cart, setCart] = useState([]);
     const { user } = useAuth();
 
+    // The latest user, also inside functions created before the user was loaded
+    // (e.g. clearCart() on the return page, which runs before /user/me has answered)
+    const userRef = useRef(user);
+    userRef.current = user;
+
+    // Bumped by clearCart(). A cart that was fetched BEFORE the cart was emptied is thrown away,
+    // otherwise an old answer from the server could fill the cart again after a purchase.
+    const cartVersion = useRef(0);
+
     useEffect(() => {
-        async function loadCart() {            
+        async function loadCart() {
+            const version = cartVersion.current;
 
             // Fetch guest cart
             const guest = JSON.parse(localStorage.getItem("cart_guest") || "[]");
@@ -51,6 +61,9 @@ export function ShoppingCartProvider({ children }) {
             });
 
             const backendItems = await res.json();
+
+            // The cart was emptied while we were waiting (e.g. after a purchase) → ignore this old answer
+            if (version !== cartVersion.current) return;
 
             const normalized = backendItems.map(item => ({
                 id: item.product_id,
@@ -181,13 +194,18 @@ export function ShoppingCartProvider({ children }) {
     }
 
     async function clearCart() {
+        // Any cart that is being fetched right now is out of date
+        cartVersion.current++;
 
-        
+        // Empty state and localStorage right away, so the customer sees an empty cart directly
+        setCart([]);
+        localStorage.removeItem("cart_guest");
 
-        // Empty backend cart
-        if (user) {
+        // Empty the backend cart (the webhook has already done it after a purchase – this is a safety net)
+        const currentUser = userRef.current;
+        if (currentUser) {
             try {
-                const res = await fetch(`${API}/cart/clear/${user.user_id}`, {
+                const res = await fetch(`${API}/cart/clear/${currentUser.user_id}`, {
                     method: "DELETE",
                     credentials: 'include',
                 });
@@ -202,12 +220,6 @@ export function ShoppingCartProvider({ children }) {
                 console.log(err.message);
             }
         }
-
-        // Empty localStorage
-        localStorage.removeItem("cart_guest");
-
-        // Empty state
-        setCart([]);
     }
 
     // Get cart quantity of specified product
